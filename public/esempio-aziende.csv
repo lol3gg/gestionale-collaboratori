@@ -1,0 +1,8 @@
+nome;telefono;email;sito;città;provincia;regione;dipendenti
+Impresa Edile Martini;+39 02 4100000;info@impresamartini.it;https://www.impresaedilemartini.it;Milano;MI;Lombardia;48
+Edilizia Gemella;02 4100000;gemella@example.it;https://www.edilizagemella.it;Torino;TO;Piemonte;5
+Cantiere del Mincio;0039 347 555 0199;info@cantieredelmincio.it;www.cantieredelmincio.it;Verona;VR;Veneto;9
+Impresa delle Madonie;+39 091 555 2211;;https://www.impresamadonie.it;Palermo;PA;Sicilia;
+;333 1112233;vuoto@example.it;https://www.vuota.it;Roma;RM;Lazio;3
+Coperture Lagunari;041 5556677;info@coperturelagunari.it;https://www.coperturelagunari.it;Venezia;VE;Veneto;molti
+Laterizi del Sud;080 4455661;;;Taranto;TA;Puglia;20

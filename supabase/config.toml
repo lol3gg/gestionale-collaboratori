@@ -1,0 +1,4 @@
+project_id = "gestione-collaboratori"
+
+[functions.admin-users]
+verify_jwt = true
