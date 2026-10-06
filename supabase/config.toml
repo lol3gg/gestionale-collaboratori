@@ -1,4 +1,4 @@
-project_id = "gestione-collaboratori"
+project_id = "oswopperbawdkyyeyfhm"
 
 [functions.admin-users]
 verify_jwt = true
