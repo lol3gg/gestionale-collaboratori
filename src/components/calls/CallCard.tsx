@@ -62,8 +62,17 @@ export function CallCard({
     current && !activePeople.some((person) => person.id === current.id) ? [...activePeople, current] : activePeople
 
   if (!isAdmin) {
+    const outcomeActions = [
+      ...OUTCOMES.map((item) => ({
+        key: item.outcome,
+        label: item.label,
+        onClick: () => onOutcome(item.outcome),
+      })),
+      { key: 'da_richiamare', label: 'Da richiamare', onClick: onCallback },
+    ]
+
     return (
-      <article className="card-surface p-4">
+      <article className="rounded-[1.25rem] border-2 border-slate-300/90 bg-surface p-4 shadow-card ring-1 ring-slate-900/5">
         {phoneLink ? (
           <a
             href={phoneLink}
@@ -120,21 +129,26 @@ export function CallCard({
           onChange={(event) => onNote(event.target.value)}
         />
 
-        <div className="mt-3 grid grid-cols-2 gap-2">
-          {OUTCOMES.map((item) => (
-            <Button
-              key={item.outcome}
-              variant="secondary"
-              className="min-h-11 w-full px-2 text-sm"
-              disabled={busy}
-              onClick={() => onOutcome(item.outcome)}
-            >
-              {item.label}
-            </Button>
-          ))}
-          <Button variant="secondary" className="col-span-2 min-h-11 w-full" disabled={busy} onClick={onCallback}>
-            Da richiamare
-          </Button>
+        <div className="mt-3">
+          <p className="mb-2 text-xs font-medium text-muted">Scorri per scegliere l’esito</p>
+          <div
+            className="-mx-1 flex snap-x snap-mandatory gap-2 overflow-x-auto px-1 pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            role="list"
+            aria-label="Esiti chiamata"
+          >
+            {outcomeActions.map((action) => (
+              <div key={action.key} className="w-[min(100%,16.5rem)] shrink-0 snap-center" role="listitem">
+                <Button
+                  variant="secondary"
+                  className="min-h-12 w-full border-2 border-slate-300 text-[15px] font-semibold"
+                  disabled={busy}
+                  onClick={action.onClick}
+                >
+                  {action.label}
+                </Button>
+              </div>
+            ))}
+          </div>
         </div>
 
         {company.assignee_id === null ? (

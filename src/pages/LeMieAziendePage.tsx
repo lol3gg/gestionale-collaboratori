@@ -82,7 +82,7 @@ export function LeMieAziendePage() {
       {board.visible.length === 0 ? (
         <EmptyState title="Nessuna azienda in questa scheda" description="Prova un’altra scheda o allenta i filtri." />
       ) : (
-        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           {board.visible.map((company) => (
             <CallCard
               key={company.id}

@@ -9,21 +9,41 @@ import { errorMessage } from '../lib/validators'
 import type { CompanyStatus } from '../types'
 
 const statusTone: Record<CompanyStatus, string> = {
-  da_chiamare: 'border-quiet-dot/40 text-quiet-fg',
-  non_risponde: 'border-quiet-dot/50 text-quiet-fg',
-  da_richiamare: 'border-warning-dot/50 text-warning-fg',
-  accettato: 'border-success-dot/50 text-success-fg',
-  rifiutato: 'border-danger-dot/40 text-danger-fg',
-  numero_errato: 'border-dark-dot/40 text-dark-fg',
+  da_chiamare: 'border-sky-400 bg-sky-50 text-sky-700',
+  non_risponde: 'border-amber-400 bg-amber-50 text-amber-700',
+  da_richiamare: 'border-orange-500 bg-orange-50 text-orange-600',
+  accettato: 'border-emerald-500 bg-emerald-50 text-emerald-600',
+  rifiutato: 'border-red-500 bg-red-50 text-red-600',
+  numero_errato: 'border-slate-700 bg-slate-100 text-slate-800',
 }
 
-function StatCard({ label, value, hint, tone }: { label: string; value: number; hint?: string; tone?: string }) {
-  const [border, valueColor] = tone ? tone.split(' ') : ['border-line', 'text-ink']
+const kpiTone = [
+  'border-primary-400 bg-primary-50 text-primary-700',
+  'border-violet-400 bg-violet-50 text-violet-700',
+  'border-cyan-400 bg-cyan-50 text-cyan-700',
+  'border-fuchsia-400 bg-fuchsia-50 text-fuchsia-700',
+]
+
+function StatCard({
+  label,
+  value,
+  hint,
+  tone,
+}: {
+  label: string
+  value: number
+  hint?: string
+  tone?: string
+}) {
+  const parts = (tone ?? 'border-line bg-surface text-ink').split(' ')
+  const border = parts[0] ?? 'border-line'
+  const bg = parts[1] ?? 'bg-surface'
+  const valueColor = parts[2] ?? 'text-ink'
   return (
-    <article className={`card-surface border p-4 sm:p-5 ${border}`}>
-      <p className="text-sm font-medium text-muted">{label}</p>
-      <p className={`mt-2 text-3xl font-semibold tracking-tight tabular-nums ${valueColor}`}>{value}</p>
-      {hint ? <p className="mt-1 text-xs text-muted">{hint}</p> : null}
+    <article className={`rounded-[1.25rem] border-2 p-4 shadow-card sm:p-5 ${border} ${bg}`}>
+      <p className="text-sm font-medium text-slate-600">{label}</p>
+      <p className={`mt-2 text-3xl font-bold tracking-tight tabular-nums ${valueColor}`}>{value}</p>
+      {hint ? <p className="mt-1 text-xs text-slate-500">{hint}</p> : null}
     </article>
   )
 }
@@ -80,10 +100,10 @@ export function DashboardPage() {
         }
       />
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatCard label="Totale aziende" value={stats.total} />
-        <StatCard label={assignedLabel} value={stats.assigned} />
-        <StatCard label="Chiamate oggi" value={stats.callsToday} />
-        <StatCard label="Chiamate questa settimana" value={stats.callsThisWeek} hint="Da lunedì" />
+        <StatCard label="Totale aziende" value={stats.total} tone={kpiTone[0]} />
+        <StatCard label={assignedLabel} value={stats.assigned} tone={kpiTone[1]} />
+        <StatCard label="Chiamate oggi" value={stats.callsToday} tone={kpiTone[2]} />
+        <StatCard label="Chiamate questa settimana" value={stats.callsThisWeek} hint="Da lunedì" tone={kpiTone[3]} />
       </div>
       <h2 className="mb-3 mt-8 text-sm font-semibold tracking-wide text-muted">Per stato</h2>
       {stats.byStatus.length === 0 ? (
