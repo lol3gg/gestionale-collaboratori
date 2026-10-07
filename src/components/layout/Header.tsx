@@ -48,7 +48,7 @@ export function Header() {
   }
 
   return (
-    <header className="sticky top-0 z-20 border-b border-line/80 bg-surface/80 pt-[env(safe-area-inset-top)] backdrop-blur-xl">
+    <header className="sticky top-0 z-20 border-b border-line/90 bg-surface/85 pt-[env(safe-area-inset-top)] backdrop-blur-xl">
       <div className="relative flex h-14 w-full min-w-0 items-center px-4 md:h-16 md:px-8">
         {/* Mobile: centered title + avatar menu */}
         <div className="flex w-full items-center md:hidden">

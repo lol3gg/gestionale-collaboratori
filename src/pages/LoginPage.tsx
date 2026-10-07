@@ -29,17 +29,17 @@ function DemoLoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-canvas px-4 py-8 pb-[max(2rem,env(safe-area-inset-bottom))] pt-[max(2rem,env(safe-area-inset-top))]">
+    <div className="flex min-h-screen items-center justify-center px-4 py-8 pb-[max(2rem,env(safe-area-inset-bottom))] pt-[max(2rem,env(safe-area-inset-top))]">
       <div className="w-full max-w-lg">
         <div className="mb-8 text-center">
-          <span className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-primary-600 text-sm font-bold text-white shadow-card">
+          <span className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-primary-600 text-sm font-bold tracking-tight text-white shadow-card">
             GC
           </span>
-          <span className="mt-4 inline-flex items-center rounded-full bg-warning-bg px-3 py-1 text-xs font-semibold tracking-wide text-warning-fg">
-            DEMO
+          <span className="mt-4 inline-flex items-center rounded-full bg-warning-bg px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-warning-fg">
+            Demo
           </span>
-          <h1 className="mt-4 text-2xl font-semibold tracking-tight text-ink sm:text-3xl">Gestione Collaboratori</h1>
-          <p className="mt-2 text-[15px] text-muted">Scegli con quale ruolo entrare. I dati sono di esempio.</p>
+          <h1 className="mt-4 text-2xl font-semibold tracking-tight text-ink sm:text-[2rem]">Gestione Collaboratori</h1>
+          <p className="mt-2 text-[15px] leading-relaxed text-muted">Scegli con quale ruolo entrare. I dati sono di esempio.</p>
         </div>
         {error ? (
           <p className="mb-4 rounded-xl bg-danger-bg px-3 py-2.5 text-center text-[15px] text-danger-fg" role="alert">

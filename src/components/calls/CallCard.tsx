@@ -72,11 +72,11 @@ export function CallCard({
     ]
 
     return (
-      <article className="rounded-[1.25rem] border-2 border-slate-300/90 bg-surface p-4 shadow-card ring-1 ring-slate-900/5">
+      <article className="rounded-[1rem] border border-line bg-surface p-4 shadow-card ring-1 ring-slate-900/[0.03]">
         {phoneLink ? (
           <a
             href={phoneLink}
-            className="mb-3 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-b from-primary-500 to-primary-600 px-4 text-base font-semibold text-white shadow-sm transition duration-150 hover:from-primary-600 hover:to-primary-700 active:scale-[0.98]"
+            className="mb-3 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary-600 px-4 text-base font-semibold tracking-tight text-white shadow-sm transition duration-150 hover:bg-primary-700 active:scale-[0.98]"
           >
             <Phone className="h-5 w-5" aria-hidden="true" />
             Chiama {company.phone}
@@ -130,7 +130,9 @@ export function CallCard({
         />
 
         <div className="mt-3">
-          <p className="mb-2 text-xs font-medium text-muted">Scorri per scegliere l’esito</p>
+          <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted">
+            Scorri per scegliere l’esito
+          </p>
           <div
             className="-mx-1 flex snap-x snap-mandatory gap-2 overflow-x-auto px-1 pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
             role="list"
@@ -140,7 +142,7 @@ export function CallCard({
               <div key={action.key} className="w-[min(100%,16.5rem)] shrink-0 snap-center" role="listitem">
                 <Button
                   variant="secondary"
-                  className="min-h-12 w-full border-2 border-slate-300 text-[15px] font-semibold"
+                  className="min-h-12 w-full border border-line text-[15px] font-semibold shadow-sm"
                   disabled={busy}
                   onClick={action.onClick}
                 >
