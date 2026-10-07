@@ -42,7 +42,7 @@ export function LeMieAziendePage() {
     <section className="overflow-x-hidden">
       <PageHeader
         title="Le mie aziende"
-        description="Le aziende assegnate a te e quelle ancora nel pool. Registra gli esiti da qui."
+        description="Apri un’azienda con Mostra per chiamare e registrare l’esito. Se era nel pool, viene presa in carico automaticamente."
       />
 
       <div className="lg:hidden">
@@ -82,7 +82,7 @@ export function LeMieAziendePage() {
       {board.visible.length === 0 ? (
         <EmptyState title="Nessuna azienda in questa scheda" description="Prova un’altra scheda o allenta i filtri." />
       ) : (
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3 xl:gap-3">
           {board.visible.map((company) => (
             <CallCard
               key={company.id}
@@ -96,7 +96,6 @@ export function LeMieAziendePage() {
               onNote={(value) => board.setNotes((current) => ({ ...current, [company.id]: value }))}
               onOutcome={(outcome) => board.saveOutcome(company, outcome, null)}
               onCallback={() => board.setCallbackFor(company)}
-              onClaim={() => board.claim.mutate(company.id)}
               onUndo={(logId) => board.undo.mutate(logId)}
             />
           ))}

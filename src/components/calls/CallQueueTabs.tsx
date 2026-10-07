@@ -15,15 +15,15 @@ export function CallQueueTabs({ tab, counts, onChange }: CallQueueTabsProps) {
           <button
             key={item.id}
             type="button"
-            className={`min-h-11 shrink-0 rounded-full px-4 py-2 text-[15px] font-medium transition-colors duration-150 ${
+            className={`min-h-11 shrink-0 rounded-full px-4 py-2 text-[15px] font-medium transition-all duration-200 ${
               selected
-                ? 'bg-primary-600 text-white shadow-sm'
-                : 'bg-surface text-ink ring-1 ring-line hover:bg-canvas'
+                ? 'btn-primary-glow shadow-sm'
+                : 'bg-surface text-ink ring-1 ring-line hover:bg-canvas hover:ring-primary-200'
             }`}
             onClick={() => onChange(item.id)}
           >
             {item.label}
-            <span className={`ml-2 tabular-nums ${selected ? 'text-primary-100' : 'text-muted'}`}>{counts[item.id]}</span>
+            <span className={`ml-2 tabular-nums ${selected ? 'text-ink/70' : 'text-muted'}`}>{counts[item.id]}</span>
           </button>
         )
       })}

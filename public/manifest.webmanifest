@@ -1,11 +1,11 @@
 {
-  "name": "Gestione Collaboratori",
-  "short_name": "Collaboratori",
+  "name": "Devology · Gestione Collaboratori",
+  "short_name": "Devology",
   "description": "Gestione aziende, chiamate e collaboratori",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#f4f7fb",
-  "theme_color": "#0b66d4",
+  "background_color": "#f2f4f8",
+  "theme_color": "#e8a201",
   "lang": "it",
   "icons": [
     {

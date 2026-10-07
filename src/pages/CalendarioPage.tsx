@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { PageHeader } from '../components/layout/PageHeader'
 import { Button } from '../components/ui/Button'
 import { EmptyState } from '../components/ui/EmptyState'
@@ -46,6 +47,8 @@ function bookingOn(bookings: ExplanationBooking[], day: Date, slot: DaySlot): Ex
 
 export function CalendarioPage() {
   const { profile, loading } = useProfile()
+  const [searchParams] = useSearchParams()
+  const preferredCompanyId = searchParams.get('companyId') ?? ''
   const bookingsQuery = useExplanationBookings(profile)
   const extrasQuery = useExplanationExtraSlots(profile)
   const companiesQuery = useCompanies(profile)
@@ -56,7 +59,7 @@ export function CalendarioPage() {
   const removeExtra = useRemoveExplanationExtraSlot(profile)
   const [weekStart, setWeekStart] = useState(() => mondayOf(new Date()))
   const [draft, setDraft] = useState<{ startsAt: string; label: string } | null>(null)
-  const [companyId, setCompanyId] = useState('')
+  const [companyId, setCompanyId] = useState(preferredCompanyId)
   const [extraDraft, setExtraDraft] = useState<{ day: Date; time: string } | null>(null)
 
   const todayStart = startOfLocalDay(new Date())
@@ -74,6 +77,7 @@ export function CalendarioPage() {
     () => [...(companiesQuery.data ?? [])].sort((left, right) => left.name.localeCompare(right.name, 'it')),
     [companiesQuery.data],
   )
+  const preferredCompany = companies.find((item) => item.id === preferredCompanyId) ?? null
   const people = peopleQuery.data ?? []
   const bookings = bookingsQuery.data ?? []
   const extras = extrasQuery.data ?? []
@@ -82,9 +86,15 @@ export function CalendarioPage() {
     .map((slot) => `${formatClock(slot.startMin)}–${formatClock(slot.endMin)}`)
     .join(' e ')
 
+  useEffect(() => {
+    if (!preferredCompanyId) return
+    setCompanyId(preferredCompanyId)
+  }, [preferredCompanyId])
+
   function openDraft(day: Date, slot: DaySlot) {
     const bounds = slotBounds(day, slot)
-    const first = companies[0]
+    const preferred = companies.find((item) => item.id === preferredCompanyId)
+    const first = preferred ?? companies[0]
     setCompanyId(first?.id ?? '')
     setDraft({
       startsAt: bounds.starts.toISOString(),
@@ -144,6 +154,13 @@ export function CalendarioPage() {
             : 'Fissa una call di spiegazione con l’admin. Ogni call dura 45 minuti.'
         }
       />
+
+      {preferredCompany ? (
+        <div className="mb-4 rounded-xl border border-primary-200 bg-primary-50 px-4 py-3 text-[15px] text-primary-900">
+          Scegli data e orario per <span className="font-semibold">{preferredCompany.name}</span>. Premi{' '}
+          <span className="font-semibold">Prenota</span> sullo slot libero.
+        </div>
+      ) : null}
 
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm font-medium text-slate-700">{range}</p>

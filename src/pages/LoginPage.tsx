@@ -1,9 +1,11 @@
 import { useState, type FormEvent } from 'react'
 import { Navigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthProvider'
+import { DevologyLogo } from '../components/brand/DevologyLogo'
 import { Button } from '../components/ui/Button'
 import { Input } from '../components/ui/Input'
 import { FullPageSpinner } from '../components/ui/Spinner'
+import { ThemeToggle } from '../components/ui/ThemeToggle'
 import { useProfile } from '../hooks/useProfile'
 import { isDemoMode } from '../lib/demo'
 import { consumeAuthNotice } from '../lib/format'
@@ -29,17 +31,25 @@ function DemoLoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-4 py-8 pb-[max(2rem,env(safe-area-inset-bottom))] pt-[max(2rem,env(safe-area-inset-top))]">
-      <div className="w-full max-w-lg">
+    <div className="login-shell flex min-h-screen items-center justify-center px-4 py-8 pb-[max(2rem,env(safe-area-inset-bottom))] pt-[max(2rem,env(safe-area-inset-top))]">
+      <div className="absolute right-4 top-[max(1rem,env(safe-area-inset-top))] z-10 sm:right-6">
+        <ThemeToggle compact className="min-h-10 w-10 px-0" />
+      </div>
+      <div className="page-enter relative z-10 w-full max-w-lg">
         <div className="mb-8 text-center">
-          <span className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-primary-600 text-sm font-bold tracking-tight text-white shadow-card">
-            GC
-          </span>
+          <div className="mb-5 flex justify-center">
+            <DevologyLogo markClassName="h-14 w-14" showWordmark={false} />
+          </div>
+          <p className="text-sm font-semibold tracking-tight text-muted">Devology System</p>
+          <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-ink sm:text-[2.15rem]">
+            Gestione <span className="brand-gradient-text">Collaboratori</span>
+          </h1>
+          <p className="mt-2 text-[15px] leading-relaxed text-muted">
+            Scegli con quale ruolo entrare. I dati sono di esempio.
+          </p>
           <span className="mt-4 inline-flex items-center rounded-full bg-warning-bg px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-warning-fg">
             Demo
           </span>
-          <h1 className="mt-4 text-2xl font-semibold tracking-tight text-ink sm:text-[2rem]">Gestione Collaboratori</h1>
-          <p className="mt-2 text-[15px] leading-relaxed text-muted">Scegli con quale ruolo entrare. I dati sono di esempio.</p>
         </div>
         {error ? (
           <p className="mb-4 rounded-xl bg-danger-bg px-3 py-2.5 text-center text-[15px] text-danger-fg" role="alert">
@@ -50,7 +60,7 @@ function DemoLoginPage() {
           <button
             type="button"
             onClick={() => choose('admin')}
-            className="card-surface px-5 py-7 text-left transition duration-150 hover:border-primary-300 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 sm:py-9"
+            className="card-surface px-5 py-7 text-left transition duration-200 hover:-translate-y-0.5 hover:border-primary-300 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 sm:py-9"
           >
             <span className="block text-lg font-semibold tracking-tight text-ink">Entra come Admin</span>
             <span className="mt-2 block text-[15px] text-muted">Lillo (Admin)</span>
@@ -58,7 +68,8 @@ function DemoLoginPage() {
           <button
             type="button"
             onClick={() => choose('collaboratore')}
-            className="card-surface px-5 py-7 text-left transition duration-150 hover:border-primary-300 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 sm:py-9"
+            className="card-surface px-5 py-7 text-left transition duration-200 hover:-translate-y-0.5 hover:border-primary-300 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 sm:py-9"
+            style={{ animationDelay: '60ms' }}
           >
             <span className="block text-lg font-semibold tracking-tight text-ink">Entra come Collaboratore</span>
             <span className="mt-2 block text-[15px] text-muted">Marco Rossi</span>
@@ -94,13 +105,15 @@ function RealLoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-canvas px-4 py-8 pb-[max(2rem,env(safe-area-inset-bottom))] pt-[max(2rem,env(safe-area-inset-top))]">
-      <div className="card-surface w-full max-w-md p-6 sm:p-8">
+    <div className="login-shell flex min-h-screen items-center justify-center px-4 py-8 pb-[max(2rem,env(safe-area-inset-bottom))] pt-[max(2rem,env(safe-area-inset-top))]">
+      <div className="absolute right-4 top-[max(1rem,env(safe-area-inset-top))] z-10 sm:right-6">
+        <ThemeToggle compact className="min-h-10 w-10 px-0" />
+      </div>
+      <div className="page-enter relative z-10 card-surface w-full max-w-md p-6 sm:p-8">
         <div className="mb-6 flex items-center gap-3">
-          <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary-600 text-sm font-semibold text-white">
-            GC
-          </span>
+          <DevologyLogo markClassName="h-11 w-11" showWordmark={false} />
           <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted">Devology</p>
             <h1 className="text-lg font-semibold tracking-tight text-ink">Gestione Collaboratori</h1>
             <p className="text-[15px] text-muted">Accedi al tuo account</p>
           </div>

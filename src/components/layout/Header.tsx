@@ -5,6 +5,8 @@ import { useProfile } from '../../hooks/useProfile'
 import { roleLabel } from '../../lib/labels'
 import { Badge } from '../ui/Badge'
 import { Button } from '../ui/Button'
+import { ThemeToggle } from '../ui/ThemeToggle'
+import { DevologyLogo } from '../brand/DevologyLogo'
 import { initialsFrom } from '../../lib/initials'
 import { usePageTitleValue } from './PageTitleContext'
 
@@ -48,26 +50,28 @@ export function Header() {
   }
 
   return (
-    <header className="sticky top-0 z-20 border-b border-line/90 bg-surface/85 pt-[env(safe-area-inset-top)] backdrop-blur-xl">
+    <header className="sticky top-0 z-20 border-b border-line/90 glass-panel pt-[env(safe-area-inset-top)]">
       <div className="relative flex h-14 w-full min-w-0 items-center px-4 md:h-16 md:px-8">
-        {/* Mobile: centered title + avatar menu */}
         <div className="flex w-full items-center md:hidden">
-          <div className="w-11 shrink-0" aria-hidden="true" />
+          <div className="w-11 shrink-0">
+            <DevologyLogo showWordmark={false} markClassName="h-8 w-8" />
+          </div>
           <h1 className="min-w-0 flex-1 truncate text-center text-[15px] font-semibold tracking-tight text-ink">
             {title}
           </h1>
-          <div className="relative w-11 shrink-0" ref={menuRef}>
+          <div className="relative flex w-auto shrink-0 items-center gap-1.5" ref={menuRef}>
+            <ThemeToggle compact className="min-h-9 w-9 px-0" />
             <button
               type="button"
               onClick={() => setMenuOpen((open) => !open)}
-              className="ml-auto flex h-10 w-10 items-center justify-center rounded-full bg-primary-600 text-xs font-semibold text-white shadow-sm transition-transform duration-150 active:scale-[0.98]"
+              className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-primary-400 to-primary-700 text-xs font-bold text-ink shadow-sm transition-transform duration-150 active:scale-[0.98]"
               aria-label="Menu account"
               aria-expanded={menuOpen}
             >
               {initials}
             </button>
             {menuOpen ? (
-              <div className="absolute right-0 top-12 z-30 w-48 overflow-hidden rounded-2xl border border-line bg-surface py-1 shadow-card animate-[fade-in_150ms_ease-out]">
+              <div className="absolute right-0 top-12 z-30 w-52 overflow-hidden rounded-2xl border border-line bg-surface py-1 shadow-card animate-[fade-in_150ms_ease-out]">
                 <div className="border-b border-line px-3 py-2.5">
                   <p className="truncate text-sm font-medium text-ink">{displayName}</p>
                   <p className="mt-0.5 text-xs text-muted">
@@ -96,8 +100,8 @@ export function Header() {
           </div>
         </div>
 
-        {/* Desktop: name + badge + action */}
         <div className="hidden w-full items-center justify-end gap-3 md:flex">
+          <ThemeToggle compact className="min-h-10 w-10 px-0" />
           <div className="min-w-0 text-right">
             <p className="truncate text-sm font-medium text-ink">{displayName}</p>
           </div>

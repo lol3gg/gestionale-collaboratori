@@ -120,9 +120,19 @@ export function DashboardPage() {
           ) : (
             <ol className="card-surface divide-y divide-line overflow-hidden">
               {stats.ranking.map((row, index) => (
-                <li key={row.user_id} className="flex items-center justify-between gap-4 px-4 py-3.5 sm:px-5">
+                <li
+                  key={row.user_id}
+                  className="flex items-center justify-between gap-4 px-4 py-3.5 transition-colors duration-150 hover:bg-primary-50/40 sm:px-5"
+                  style={{ animationDelay: `${index * 40}ms` }}
+                >
                   <span className="flex min-w-0 items-center gap-3 text-[15px] text-ink">
-                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-canvas text-xs font-semibold tabular-nums text-muted">
+                    <span
+                      className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-xs font-bold tabular-nums ${
+                        index === 0
+                          ? 'bg-gradient-to-br from-primary-300 to-primary-600 text-ink'
+                          : 'bg-canvas text-muted'
+                      }`}
+                    >
                       {index + 1}
                     </span>
                     <span className="truncate font-medium">{row.full_name}</span>

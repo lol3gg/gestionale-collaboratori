@@ -16,7 +16,7 @@ function TabItem({ item, active }: { item: NavItem; active: boolean }) {
       }`}
     >
       {active ? (
-        <span className="absolute top-1 h-1 w-4 rounded-full bg-primary-600 transition-opacity duration-150" aria-hidden="true" />
+        <span className="absolute top-1 h-1 w-4 rounded-full bg-gradient-to-r from-primary-400 to-primary-700 transition-opacity duration-150" aria-hidden="true" />
       ) : null}
       <item.icon className="h-5 w-5" aria-hidden="true" strokeWidth={active ? 2.25 : 1.75} />
       <span className="max-w-full truncate text-center text-[11px] font-medium leading-tight">{item.label}</span>
@@ -113,7 +113,7 @@ export function BottomNav() {
               aria-label="Altro"
             >
               {overflowActive ? (
-                <span className="absolute top-1 h-1 w-4 rounded-full bg-primary-600" aria-hidden="true" />
+                <span className="absolute top-1 h-1 w-4 rounded-full bg-gradient-to-r from-primary-400 to-primary-700" aria-hidden="true" />
               ) : null}
               <MoreHorizontal className="h-5 w-5" aria-hidden="true" strokeWidth={overflowActive ? 2.25 : 1.75} />
               <span className="text-[11px] font-medium leading-tight">Altro</span>
