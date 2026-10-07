@@ -202,13 +202,15 @@ function parseExtraSlot(value: unknown): ExplanationExtraSlot | null {
 }
 
 function parseStore(value: unknown): DemoStore | null {
-  if (!isRecord(value) || value.version !== DEMO_STORE_VERSION) return null
+  if (!isRecord(value)) return null
+  const version = value.version
+  // Accetta v4 (pre-extraSlots) e v5: migra all’ultima versione.
+  if (version !== DEMO_STORE_VERSION && version !== 4) return null
   if (
     !Array.isArray(value.collaborators) ||
     !Array.isArray(value.companies) ||
     !Array.isArray(value.callLogs) ||
-    !Array.isArray(value.bookings) ||
-    !Array.isArray(value.extraSlots)
+    !Array.isArray(value.bookings)
   ) {
     return null
   }
@@ -237,32 +239,52 @@ function parseStore(value: unknown): DemoStore | null {
     bookings.push(booking)
   }
   const extraSlots: ExplanationExtraSlot[] = []
-  for (const item of value.extraSlots) {
-    const slot = parseExtraSlot(item)
-    if (!slot) return null
-    extraSlots.push(slot)
+  if (Array.isArray(value.extraSlots)) {
+    for (const item of value.extraSlots) {
+      const slot = parseExtraSlot(item)
+      if (!slot) return null
+      extraSlots.push(slot)
+    }
   }
   return { version: DEMO_STORE_VERSION, collaborators, companies, callLogs, bookings, extraSlots }
 }
 
+function ensureStoreShape(store: DemoStore): DemoStore {
+  return {
+    ...store,
+    version: DEMO_STORE_VERSION,
+    bookings: store.bookings ?? [],
+    extraSlots: store.extraSlots ?? [],
+  }
+}
+
 function persist(store: DemoStore): void {
-  memory = store
+  memory = ensureStoreShape(store)
   try {
-    localStorage.setItem(DEMO_STORE_KEY, JSON.stringify(store))
+    localStorage.setItem(DEMO_STORE_KEY, JSON.stringify(memory))
   } catch {
     // La sessione demo continua in memoria se il browser blocca localStorage.
   }
 }
 
 export function readStore(): DemoStore {
-  if (memory?.version === DEMO_STORE_VERSION) return memory
+  if (memory) {
+    if (
+      memory.version !== DEMO_STORE_VERSION ||
+      !Array.isArray(memory.extraSlots) ||
+      !Array.isArray(memory.bookings)
+    ) {
+      persist(ensureStoreShape(memory))
+    }
+    return memory
+  }
   try {
     const raw = localStorage.getItem(DEMO_STORE_KEY)
     if (raw) {
       const parsed = parseStore(JSON.parse(raw) as unknown)
       if (parsed) {
-        memory = parsed
-        return parsed
+        persist(parsed)
+        return memory ?? parsed
       }
     }
   } catch {
@@ -270,7 +292,7 @@ export function readStore(): DemoStore {
   }
   const seed = createSeed()
   persist(seed)
-  return seed
+  return memory ?? seed
 }
 
 function cloneCompany(company: Company): Company {
@@ -726,14 +748,15 @@ export function listExplanationBookingsRecord(): ExplanationBooking[] {
 }
 
 export function listExplanationExtraSlotsRecord(): ExplanationExtraSlot[] {
-  return readStore().extraSlots.map(cloneExtraSlot)
+  return (readStore().extraSlots ?? []).map(cloneExtraSlot)
 }
 
 export function bookExplanationRecord(input: BookExplanationInput, actor: Actor): ExplanationBooking {
   const store = readStore()
   const startsProbe = new Date(input.startsAt)
   if (Number.isNaN(startsProbe.getTime())) throw new Error('Orario non valido')
-  const daySlots = slotsForDay(startsProbe, store.extraSlots)
+  const extraSlots = store.extraSlots ?? []
+  const daySlots = slotsForDay(startsProbe, extraSlots)
   const { starts, ends } = assertBookableSlot(
     input.startsAt,
     daySlots.map((slot) => slot.startMin),
@@ -793,9 +816,10 @@ export function addExplanationExtraSlotRecord(
   }
   const day = startOfLocalDay(new Date(year, month - 1, dayNum))
   const store = readStore()
-  const existing = slotsForDay(day, store.extraSlots)
+  const extraSlots = store.extraSlots ?? []
+  const existing = slotsForDay(day, extraSlots)
   assertExtraSlot(day, input.startMin, existing)
-  if (store.extraSlots.some((slot) => slot.date_key === input.dateKey && slot.start_min === input.startMin)) {
+  if (extraSlots.some((slot) => slot.date_key === input.dateKey && slot.start_min === input.startMin)) {
     throw new Error('Questo orario è già stato aggiunto')
   }
   const slot: ExplanationExtraSlot = {
@@ -804,14 +828,15 @@ export function addExplanationExtraSlotRecord(
     start_min: input.startMin,
     created_at: new Date().toISOString(),
   }
-  persist({ ...store, extraSlots: [...store.extraSlots, slot] })
+  persist({ ...store, extraSlots: [...extraSlots, slot] })
   return cloneExtraSlot(slot)
 }
 
 export function removeExplanationExtraSlotRecord(id: string, actor: Actor): void {
   requireAdmin(actor)
   const store = readStore()
-  const slot = store.extraSlots.find((item) => item.id === id)
+  const extraSlots = store.extraSlots ?? []
+  const slot = extraSlots.find((item) => item.id === id)
   if (!slot) throw new Error('Orario non trovato')
   const parts = slot.date_key.split('-').map(Number)
   const day = startOfLocalDay(new Date(parts[0]!, parts[1]! - 1, parts[2]!))
@@ -820,5 +845,5 @@ export function removeExplanationExtraSlotRecord(id: string, actor: Actor): void
     return isSameDay(starts, day) && starts.getHours() * 60 + starts.getMinutes() === slot.start_min
   })
   if (booked) throw new Error('Non puoi rimuovere un orario già prenotato')
-  persist({ ...store, extraSlots: store.extraSlots.filter((item) => item.id !== id) })
+  persist({ ...store, extraSlots: extraSlots.filter((item) => item.id !== id) })
 }
