@@ -8,8 +8,8 @@ export function SetupPage() {
           chiave anonima. La service role key non va mai messa qui.
         </p>
         <pre className="mt-4 overflow-x-auto rounded-xl bg-slate-900 p-4 text-xs leading-6 text-slate-100">
-{`VITE_SUPABASE_URL=https://oswopperbawdkyyeyfhm.supabase.co
-VITE_SUPABASE_ANON_KEY=la-chiave-anon`}
+{`VITE_SUPABASE_URL=
+VITE_SUPABASE_ANON_KEY=`}
         </pre>
       </div>
     </div>

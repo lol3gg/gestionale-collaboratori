@@ -125,7 +125,7 @@ export function AziendePage() {
       <section>
         <PageHeader title={profile?.role === 'collaboratore' ? 'Le mie aziende' : 'Aziende'} />
         <div className="flex justify-center py-24">
-          <Spinner className="h-8 w-8 text-indigo-600" />
+          <Spinner className="h-8 w-8 text-primary-600" />
         </div>
       </section>
     )
@@ -178,8 +178,8 @@ export function AziendePage() {
           />
 
           {isAdmin && selected.length > 0 ? (
-            <div className="mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-indigo-100 bg-indigo-50 px-4 py-3">
-              <span className="text-sm font-medium text-indigo-900">{selected.length} selezionate</span>
+            <div className="mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-primary-100 bg-primary-50 px-4 py-3">
+              <span className="text-sm font-medium text-primary-900">{selected.length} selezionate</span>
               <Button variant="secondary" onClick={() => setBulk('assign')}>
                 Assegna
               </Button>

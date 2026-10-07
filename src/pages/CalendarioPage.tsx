@@ -2,21 +2,34 @@ import { useMemo, useState } from 'react'
 import { PageHeader } from '../components/layout/PageHeader'
 import { Button } from '../components/ui/Button'
 import { EmptyState } from '../components/ui/EmptyState'
-import { Select } from '../components/ui/Input'
+import { Input, Select } from '../components/ui/Input'
 import { Modal } from '../components/ui/Modal'
 import { Spinner } from '../components/ui/Spinner'
-import { useBookExplanation, useCancelExplanation, useExplanationBookings } from '../hooks/useCalendar'
+import {
+  useAddExplanationExtraSlot,
+  useBookExplanation,
+  useCancelExplanation,
+  useExplanationBookings,
+  useExplanationExtraSlots,
+  useRemoveExplanationExtraSlot,
+} from '../hooks/useCalendar'
 import { useCompanies } from '../hooks/useCompanies'
 import { useCollaborators } from '../hooks/useCollaborators'
 import { useProfile } from '../hooks/useProfile'
 import {
+  EXTRA_SLOT_EARLIEST,
+  EXTRA_SLOT_LATEST,
+  EXPLANATION_MINUTES,
   addDays,
-  explanationSlots,
   formatClock,
   isSameLocalDay,
+  localDateKey,
   mondayOf,
+  parseClockToMinutes,
   slotBounds,
-  type SlotMinutes,
+  slotsForDay,
+  startOfLocalDay,
+  type DaySlot,
 } from '../lib/calendar'
 import { errorMessage } from '../lib/validators'
 import type { ExplanationBooking } from '../types'
@@ -26,7 +39,7 @@ const weekTitle = new Intl.DateTimeFormat('it-IT', { day: 'numeric', month: 'sho
 const weekTitleYear = new Intl.DateTimeFormat('it-IT', { day: 'numeric', month: 'short', year: 'numeric' })
 const slotTitle = new Intl.DateTimeFormat('it-IT', { weekday: 'long', day: 'numeric', month: 'long' })
 
-function bookingOn(bookings: ExplanationBooking[], day: Date, slot: SlotMinutes): ExplanationBooking | null {
+function bookingOn(bookings: ExplanationBooking[], day: Date, slot: DaySlot): ExplanationBooking | null {
   const { starts } = slotBounds(day, slot)
   return bookings.find((booking) => new Date(booking.starts_at).getTime() === starts.getTime()) ?? null
 }
@@ -34,26 +47,42 @@ function bookingOn(bookings: ExplanationBooking[], day: Date, slot: SlotMinutes)
 export function CalendarioPage() {
   const { profile, loading } = useProfile()
   const bookingsQuery = useExplanationBookings(profile)
+  const extrasQuery = useExplanationExtraSlots(profile)
   const companiesQuery = useCompanies(profile)
   const peopleQuery = useCollaborators()
   const book = useBookExplanation(profile)
   const cancel = useCancelExplanation(profile)
+  const addExtra = useAddExplanationExtraSlot(profile)
+  const removeExtra = useRemoveExplanationExtraSlot(profile)
   const [weekStart, setWeekStart] = useState(() => mondayOf(new Date()))
   const [draft, setDraft] = useState<{ startsAt: string; label: string } | null>(null)
   const [companyId, setCompanyId] = useState('')
+  const [extraDraft, setExtraDraft] = useState<{ day: Date; time: string } | null>(null)
 
-  const slots = explanationSlots()
-  const days = useMemo(() => Array.from({ length: 7 }, (_, index) => addDays(weekStart, index)), [weekStart])
+  const todayStart = startOfLocalDay(new Date())
+  const currentWeekStart = mondayOf(todayStart)
+  const todayMs = todayStart.getTime()
+  const days = useMemo(
+    () =>
+      Array.from({ length: 7 }, (_, index) => addDays(weekStart, index)).filter(
+        (day) => startOfLocalDay(day).getTime() >= todayMs,
+      ),
+    [weekStart, todayMs],
+  )
+  const canGoPrev = weekStart.getTime() > currentWeekStart.getTime()
   const companies = useMemo(
     () => [...(companiesQuery.data ?? [])].sort((left, right) => left.name.localeCompare(right.name, 'it')),
     [companiesQuery.data],
   )
   const people = peopleQuery.data ?? []
   const bookings = bookingsQuery.data ?? []
+  const extras = extrasQuery.data ?? []
   const isAdmin = profile?.role === 'admin'
-  const capacity = slots.length
+  const defaultSlotsLabel = slotsForDay(todayStart, [])
+    .map((slot) => `${formatClock(slot.startMin)}–${formatClock(slot.endMin)}`)
+    .join(' e ')
 
-  function openDraft(day: Date, slot: SlotMinutes) {
+  function openDraft(day: Date, slot: DaySlot) {
     const bounds = slotBounds(day, slot)
     const first = companies[0]
     setCompanyId(first?.id ?? '')
@@ -63,28 +92,33 @@ export function CalendarioPage() {
     })
   }
 
-  if (loading || !profile || bookingsQuery.isPending || companiesQuery.isPending) {
+  function openExtraDraft(day: Date) {
+    setExtraDraft({ day, time: '16:00' })
+  }
+
+  if (loading || !profile || bookingsQuery.isPending || extrasQuery.isPending || companiesQuery.isPending) {
     return (
       <section>
         <PageHeader title="Calendario" />
         <div className="flex justify-center py-24">
-          <Spinner className="h-8 w-8 text-indigo-600" />
+          <Spinner className="h-8 w-8 text-primary-600" />
         </div>
       </section>
     )
   }
 
-  if (bookingsQuery.isError || companiesQuery.isError) {
+  if (bookingsQuery.isError || extrasQuery.isError || companiesQuery.isError) {
     return (
       <section>
         <PageHeader title="Calendario" />
         <EmptyState
           title="Impossibile caricare il calendario"
-          description={errorMessage(bookingsQuery.error ?? companiesQuery.error)}
+          description={errorMessage(bookingsQuery.error ?? extrasQuery.error ?? companiesQuery.error)}
           action={
             <Button
               onClick={() => {
                 void bookingsQuery.refetch()
+                void extrasQuery.refetch()
                 void companiesQuery.refetch()
               }}
             >
@@ -96,7 +130,9 @@ export function CalendarioPage() {
     )
   }
 
-  const range = `${weekTitle.format(weekStart)} – ${weekTitleYear.format(addDays(weekStart, 6))}`
+  const rangeStart = days[0] ?? weekStart
+  const rangeEnd = days[days.length - 1] ?? addDays(weekStart, 6)
+  const range = `${weekTitle.format(rangeStart)} – ${weekTitleYear.format(rangeEnd)}`
 
   return (
     <section>
@@ -104,15 +140,19 @@ export function CalendarioPage() {
         title="Calendario"
         description={
           isAdmin
-            ? 'Disponibilità per le call di spiegazione, dalle 17:30 alle 19:30. Ogni call dura 45 minuti.'
-            : 'Fissa una call di spiegazione con l’admin, dalle 17:30 alle 19:30. Ogni call dura 45 minuti.'
+            ? 'Disponibilità per le call di spiegazione. Ogni call dura 45 minuti. Puoi aggiungere orari extra oltre a quelli predefiniti.'
+            : 'Fissa una call di spiegazione con l’admin. Ogni call dura 45 minuti.'
         }
       />
 
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm font-medium text-slate-700">{range}</p>
         <div className="flex flex-wrap gap-2">
-          <Button variant="secondary" onClick={() => setWeekStart((current) => addDays(current, -7))}>
+          <Button
+            variant="secondary"
+            disabled={!canGoPrev}
+            onClick={() => setWeekStart((current) => addDays(current, -7))}
+          >
             Settimana precedente
           </Button>
           <Button variant="secondary" onClick={() => setWeekStart(mondayOf(new Date()))}>
@@ -124,29 +164,46 @@ export function CalendarioPage() {
         </div>
       </div>
 
-      <p className="mb-4 text-sm text-slate-500">
-        In ogni giornata entrano {capacity} call: {slots.map((slot) => `${formatClock(slot.startMin)}–${formatClock(slot.endMin)}`).join(' e ')}.
-        Un orario già preso non si può riusare.
+      <p className="mb-4 text-[15px] text-muted">
+        Orari predefiniti ogni giorno: {defaultSlotsLabel}. Un orario già preso non si può riusare.
+        {isAdmin
+          ? ` Come admin puoi aggiungere altri slot (da ${formatClock(EXTRA_SLOT_EARLIEST)} a ${formatClock(EXTRA_SLOT_LATEST)}, durata ${EXPLANATION_MINUTES} minuti).`
+          : ''}
       </p>
 
       <div className="space-y-3">
+        {days.length === 0 ? (
+          <EmptyState
+            title="Nessun giorno disponibile"
+            description="Passa alla settimana successiva per vedere le disponibilità."
+          />
+        ) : null}
         {days.map((day) => {
-          const taken = slots.filter((slot) => bookingOn(bookings, day, slot)).length
+          const daySlots = slotsForDay(day, extras)
+          const taken = daySlots.filter((slot) => bookingOn(bookings, day, slot)).length
+          const capacity = daySlots.length
           const full = taken >= capacity
           const today = isSameLocalDay(day, new Date())
           return (
             <article
               key={day.toISOString()}
-              className={`rounded-xl border bg-white p-3 shadow-sm ${today ? 'border-indigo-300' : 'border-slate-200'}`}
+              className={`card-surface p-4 ${today ? 'border-primary-300' : ''}`}
             >
-              <div className="mb-2 flex items-center justify-between gap-2">
-                <h2 className="text-sm font-semibold capitalize text-slate-900">{dayTitle.format(day)}</h2>
-                <span className={`text-xs font-medium ${full ? 'text-slate-500' : 'text-indigo-700'}`}>
-                  {full ? 'Completo' : `${taken}/${capacity} posti`}
-                </span>
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                <h2 className="text-[15px] font-semibold capitalize tracking-tight text-ink">{dayTitle.format(day)}</h2>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className={`text-xs font-medium ${full ? 'text-muted' : 'text-primary-700'}`}>
+                    {full ? 'Completo' : `${taken}/${capacity} posti`}
+                  </span>
+                  {isAdmin ? (
+                    <Button variant="secondary" className="min-h-11 px-3 text-sm" onClick={() => openExtraDraft(day)}>
+                      Aggiungi orario
+                    </Button>
+                  ) : null}
+                </div>
               </div>
               <div className="grid gap-2 sm:grid-cols-2">
-                {slots.map((slot) => {
+                {daySlots.map((slot) => {
                   const booking = bookingOn(bookings, day, slot)
                   const bounds = slotBounds(day, slot)
                   const past = bounds.starts.getTime() <= Date.now()
@@ -157,38 +214,60 @@ export function CalendarioPage() {
                   const canSeeDetails = Boolean(booking && (isAdmin || mine))
                   const canCancel = Boolean(booking && (isAdmin || mine))
                   return (
-                    <div key={slot.startMin} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+                    <div
+                      key={`${slot.startMin}-${slot.extraId ?? 'base'}`}
+                      className="flex min-h-11 flex-wrap items-center justify-between gap-2 rounded-xl border border-line bg-canvas px-3 py-2.5"
+                    >
                       <div className="min-w-0">
-                        <p className="text-sm font-semibold text-slate-800">{clock}</p>
+                        <p className="text-[15px] font-semibold tabular-nums text-ink">
+                          {clock}
+                          {slot.isExtra ? (
+                            <span className="ml-2 align-middle text-xs font-medium text-primary-700">Extra</span>
+                          ) : null}
+                        </p>
                         {booking ? (
-                          <p className="truncate text-sm text-slate-600">
-                            {canSeeDetails ? `${company?.name ?? 'Azienda'} · ${person?.full_name ?? 'Collaboratore'}` : 'Occupato'}
+                          <p className="truncate text-[15px] text-muted">
+                            {canSeeDetails
+                              ? `${company?.name ?? 'Azienda'} · ${person?.full_name ?? 'Collaboratore'}`
+                              : 'Occupato'}
                           </p>
                         ) : past ? (
-                          <p className="text-xs text-slate-400">Passato</p>
+                          <p className="text-xs text-muted">Passato</p>
                         ) : (
-                          <p className="text-xs text-slate-500">Libero</p>
+                          <p className="text-xs text-muted">Libero</p>
                         )}
                       </div>
-                      {booking && canCancel ? (
-                        <Button
-                          variant="secondary"
-                          className="!min-h-0 !px-2.5 !py-1 !text-xs"
-                          disabled={cancel.isPending}
-                          onClick={() => cancel.mutate(booking.id)}
-                        >
-                          Annulla
-                        </Button>
-                      ) : null}
-                      {!booking && !past ? (
-                        <Button
-                          className="!min-h-0 !px-2.5 !py-1 !text-xs"
-                          disabled={full || book.isPending}
-                          onClick={() => openDraft(day, slot)}
-                        >
-                          Prenota
-                        </Button>
-                      ) : null}
+                      <div className="flex flex-wrap gap-2">
+                        {booking && canCancel ? (
+                          <Button
+                            variant="secondary"
+                            className="min-h-11 px-3 text-sm"
+                            disabled={cancel.isPending}
+                            onClick={() => cancel.mutate(booking.id)}
+                          >
+                            Annulla
+                          </Button>
+                        ) : null}
+                        {!booking && !past ? (
+                          <Button
+                            className="min-h-11 px-3 text-sm"
+                            disabled={full || book.isPending}
+                            onClick={() => openDraft(day, slot)}
+                          >
+                            Prenota
+                          </Button>
+                        ) : null}
+                        {isAdmin && slot.isExtra && slot.extraId && !booking ? (
+                          <Button
+                            variant="ghost"
+                            className="min-h-11 px-3 text-sm"
+                            disabled={removeExtra.isPending}
+                            onClick={() => removeExtra.mutate(slot.extraId!)}
+                          >
+                            Rimuovi
+                          </Button>
+                        ) : null}
+                      </div>
                     </div>
                   )
                 })}
@@ -235,6 +314,57 @@ export function CalendarioPage() {
             ))}
           </Select>
         )}
+      </Modal>
+
+      <Modal
+        open={extraDraft !== null}
+        title="Aggiungi orario"
+        description={
+          extraDraft
+            ? `${slotTitle.format(extraDraft.day)} · durata ${EXPLANATION_MINUTES} minuti`
+            : undefined
+        }
+        onClose={() => setExtraDraft(null)}
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setExtraDraft(null)}>
+              Chiudi
+            </Button>
+            <Button
+              loading={addExtra.isPending}
+              disabled={!extraDraft?.time}
+              onClick={() => {
+                if (!extraDraft) return
+                const startMin = parseClockToMinutes(extraDraft.time)
+                if (startMin === null) return
+                addExtra.mutate(
+                  { dateKey: localDateKey(extraDraft.day), startMin },
+                  { onSuccess: () => setExtraDraft(null) },
+                )
+              }}
+            >
+              Aggiungi
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-2">
+          <Input
+            label="Ora di inizio"
+            type="time"
+            step={900}
+            min={formatClock(EXTRA_SLOT_EARLIEST)}
+            max={formatClock(EXTRA_SLOT_LATEST - EXPLANATION_MINUTES)}
+            value={extraDraft?.time ?? ''}
+            onChange={(event) =>
+              setExtraDraft((current) => (current ? { ...current, time: event.target.value } : current))
+            }
+          />
+          <p className="text-sm text-muted">
+            Tra {formatClock(EXTRA_SLOT_EARLIEST)} e {formatClock(EXTRA_SLOT_LATEST - EXPLANATION_MINUTES)}, a
+            scatti di 15 minuti.
+          </p>
+        </div>
       </Modal>
     </section>
   )

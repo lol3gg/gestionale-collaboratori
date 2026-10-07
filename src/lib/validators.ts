@@ -55,5 +55,10 @@ export function mapQueryError(message: string): string {
 }
 
 export function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : 'Operazione non riuscita'
+  if (!(error instanceof Error)) return 'Operazione non riuscita'
+  const message = error.message
+  if (/service[_-]?role|sb_secret_|eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]+\./i.test(message)) {
+    return 'Operazione non riuscita'
+  }
+  return message
 }

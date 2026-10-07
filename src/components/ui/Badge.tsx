@@ -2,29 +2,35 @@ import type { ReactNode } from 'react'
 
 export type BadgeVariant = 'success' | 'neutral' | 'danger' | 'info' | 'warning' | 'accent' | 'yellow' | 'orange' | 'dark'
 
-const variants: Record<BadgeVariant, string> = {
-  success: 'bg-emerald-500 text-white ring-emerald-600',
-  neutral: 'bg-slate-200 text-slate-800 ring-slate-300',
-  danger: 'bg-red-500 text-white ring-red-600',
-  info: 'bg-indigo-500 text-white ring-indigo-600',
-  warning: 'bg-amber-400 text-amber-950 ring-amber-500',
-  accent: 'bg-violet-500 text-white ring-violet-600',
-  yellow: 'bg-yellow-400 text-yellow-950 ring-yellow-500',
-  orange: 'bg-orange-500 text-white ring-orange-600',
-  dark: 'bg-slate-900 text-white ring-slate-950',
+const variants: Record<BadgeVariant, { wrap: string; dot: string }> = {
+  success: { wrap: 'bg-success-bg text-success-fg', dot: 'bg-success-dot' },
+  neutral: { wrap: 'bg-quiet-bg text-quiet-fg', dot: 'bg-quiet-dot' },
+  danger: { wrap: 'bg-danger-bg text-danger-fg', dot: 'bg-danger-dot' },
+  info: { wrap: 'bg-primary-50 text-primary-700', dot: 'bg-primary-500' },
+  warning: { wrap: 'bg-warning-bg text-warning-fg', dot: 'bg-warning-dot' },
+  accent: { wrap: 'bg-primary-50 text-primary-700', dot: 'bg-primary-500' },
+  yellow: { wrap: 'bg-quiet-bg text-quiet-fg', dot: 'bg-quiet-dot' },
+  orange: { wrap: 'bg-warning-bg text-warning-fg', dot: 'bg-warning-dot' },
+  dark: { wrap: 'bg-dark-bg text-dark-fg', dot: 'bg-dark-dot' },
 }
 
 export function Badge({
   children,
   variant = 'neutral',
   className = '',
+  showDot = true,
 }: {
   children: ReactNode
   variant?: BadgeVariant
   className?: string
+  showDot?: boolean
 }) {
+  const style = variants[variant]
   return (
-    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset ${variants[variant]} ${className}`}>
+    <span
+      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${style.wrap} ${className}`}
+    >
+      {showDot ? <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${style.dot}`} aria-hidden="true" /> : null}
       {children}
     </span>
   )

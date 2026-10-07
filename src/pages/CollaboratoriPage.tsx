@@ -121,7 +121,7 @@ export function CollaboratoriPage() {
 
       {query.isPending ? (
         <div className="flex justify-center py-24">
-          <Spinner className="h-8 w-8 text-indigo-600" />
+          <Spinner className="h-8 w-8 text-primary-600" />
         </div>
       ) : null}
 
@@ -143,30 +143,30 @@ export function CollaboratoriPage() {
             {query.data.map((row) => {
               const self = profile?.id === row.id
               return (
-                <li key={row.id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                <li key={row.id} className="card-surface p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="truncate font-medium text-slate-900">{row.full_name || '—'}</p>
-                      <p className="mt-1 break-all text-sm text-slate-500">{row.email}</p>
+                      <p className="truncate font-semibold tracking-tight text-ink">{row.full_name || '—'}</p>
+                      <p className="mt-1 break-all text-[15px] text-muted">{row.email}</p>
                     </div>
                     <Badge variant={row.active ? 'success' : 'danger'}>{row.active ? 'Attivo' : 'Disattivo'}</Badge>
                   </div>
-                  <dl className="mt-4 grid grid-cols-2 gap-3 text-sm">
+                  <dl className="mt-4 grid grid-cols-2 gap-3 text-[15px]">
                     <div>
-                      <dt className="text-xs text-slate-500">Chiamate</dt>
-                      <dd className="mt-1 tabular-nums text-slate-900">{row.calls_total}</dd>
+                      <dt className="text-xs text-muted">Chiamate</dt>
+                      <dd className="mt-1 tabular-nums text-ink">{row.calls_total}</dd>
                     </div>
                     <div>
-                      <dt className="text-xs text-slate-500">Accettate</dt>
-                      <dd className="mt-1 tabular-nums text-slate-900">{row.calls_accepted}</dd>
+                      <dt className="text-xs text-muted">Accettate</dt>
+                      <dd className="mt-1 tabular-nums text-ink">{row.calls_accepted}</dd>
                     </div>
                     <div>
-                      <dt className="text-xs text-slate-500">Rifiutate</dt>
-                      <dd className="mt-1 tabular-nums text-slate-900">{row.calls_rejected}</dd>
+                      <dt className="text-xs text-muted">Rifiutate</dt>
+                      <dd className="mt-1 tabular-nums text-ink">{row.calls_rejected}</dd>
                     </div>
                     <div>
-                      <dt className="text-xs text-slate-500">Accettazione</dt>
-                      <dd className="mt-1 tabular-nums text-slate-900">
+                      <dt className="text-xs text-muted">Accettazione</dt>
+                      <dd className="mt-1 tabular-nums text-ink">
                         {row.acceptance_rate === null ? '—' : `${row.acceptance_rate}%`}
                       </dd>
                     </div>

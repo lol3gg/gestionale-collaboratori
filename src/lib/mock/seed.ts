@@ -1,4 +1,12 @@
-import type { CallLog, Company, CompanyNote, CompanyStatus, ExplanationBooking, Profile } from '../../types'
+import type {
+  CallLog,
+  Company,
+  CompanyNote,
+  CompanyStatus,
+  ExplanationBooking,
+  ExplanationExtraSlot,
+  Profile,
+} from '../../types'
 import { explanationSlots, slotBounds } from '../calendar'
 import { DEMO_ADMIN_ID, DEMO_GIULIA_ID, DEMO_LUCA_ID, DEMO_MARCO_ID, DEMO_STORE_VERSION } from './ids'
 
@@ -124,6 +132,7 @@ export function createSeed(): {
   companies: Company[]
   callLogs: CallLog[]
   bookings: ExplanationBooking[]
+  extraSlots: ExplanationExtraSlot[]
 } {
   const collaborators: Profile[] = [
     {
@@ -206,7 +215,7 @@ export function createSeed(): {
   const first = slots[0]
   const second = slots[1]
   if (!first || !second) {
-    return { version: DEMO_STORE_VERSION, collaborators, companies, callLogs, bookings: [] }
+    return { version: DEMO_STORE_VERSION, collaborators, companies, callLogs, bookings: [], extraSlots: [] }
   }
 
   const bookingAt = (dayOffset: number, slot: (typeof slots)[number], id: string, companyId: string, userId: string): ExplanationBooking => {
@@ -229,5 +238,5 @@ export function createSeed(): {
     bookingAt(2, first, 'book-03', 'co-15', MARCO),
   ]
 
-  return { version: DEMO_STORE_VERSION, collaborators, companies, callLogs, bookings }
+  return { version: DEMO_STORE_VERSION, collaborators, companies, callLogs, bookings, extraSlots: [] }
 }

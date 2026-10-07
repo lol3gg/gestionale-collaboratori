@@ -139,6 +139,8 @@ create policy assignments_insert_claim
   to authenticated
   with check (user_id = auth.uid());
 
+revoke all on table public.call_logs from anon, public;
+
 grant select, insert, update, delete on public.call_logs to authenticated;
 grant insert, update, delete on public.companies to authenticated;
 grant insert, update, delete on public.company_assignments to authenticated;

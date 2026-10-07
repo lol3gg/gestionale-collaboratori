@@ -10,9 +10,9 @@ create table if not exists public.explanation_bookings (
   constraint explanation_bookings_duration check (ends_at = starts_at + interval '45 minutes'),
   constraint explanation_bookings_window check (
     (extract(hour from starts_at at time zone 'Europe/Rome') * 60
-      + extract(minute from starts_at at time zone 'Europe/Rome')) >= (17 * 60 + 30)
+      + extract(minute from starts_at at time zone 'Europe/Rome')) >= (8 * 60)
     and (extract(hour from ends_at at time zone 'Europe/Rome') * 60
-      + extract(minute from ends_at at time zone 'Europe/Rome')) <= (19 * 60 + 30)
+      + extract(minute from ends_at at time zone 'Europe/Rome')) <= (21 * 60)
   ),
   constraint explanation_bookings_no_overlap exclude using gist (tstzrange(starts_at, ends_at, '[)') with &&)
 );
@@ -46,9 +46,9 @@ create policy explanation_bookings_insert_assigned
     user_id = auth.uid()
     and exists (
       select 1
-      from public.company_assignments as assignments
-      where assignments.company_id = explanation_bookings.company_id
-        and assignments.user_id = auth.uid()
+      from public.companies as company
+      where company.id = explanation_bookings.company_id
+        and company.assigned_to = auth.uid()
     )
   );
 
@@ -59,5 +59,6 @@ create policy explanation_bookings_delete_own
   to authenticated
   using (user_id = auth.uid());
 
+revoke all on table public.explanation_bookings from anon, public;
 grant select, insert, delete on public.explanation_bookings to authenticated;
 grant all on public.explanation_bookings to service_role;

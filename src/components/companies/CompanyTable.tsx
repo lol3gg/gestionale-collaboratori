@@ -182,7 +182,7 @@ export function CompanyTable({
     <>
       <ul className="space-y-3 md:hidden">
         {rows.map((row) => (
-          <li key={row.id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <li key={row.id} className="card-surface p-4">
             <div className="flex items-start gap-3">
               {selectable ? (
                 <input
@@ -194,21 +194,21 @@ export function CompanyTable({
                 />
               ) : null}
               <button type="button" className="min-w-0 flex-1 text-left" onClick={() => onOpen(row)}>
-                <span className="block break-words text-base font-semibold text-slate-900">{row.name}</span>
-                <span className="mt-1 block text-sm text-slate-500">
+                <span className="block break-words text-base font-semibold tracking-tight text-ink">{row.name}</span>
+                <span className="mt-1 block text-[15px] text-muted">
                   {row.city} ({row.province})
                 </span>
               </button>
               <CompanyStatusBadge status={row.status} />
             </div>
             {row.phone ? (
-              <a href={telHref(row.phone)} className="mt-3 block text-lg font-semibold text-indigo-700">
+              <a href={telHref(row.phone)} className="mt-3 block text-lg font-semibold text-primary-700">
                 {row.phone}
               </a>
             ) : (
-              <p className="mt-3 text-sm text-slate-400">Nessun telefono</p>
+              <p className="mt-3 text-[15px] text-muted">Nessun telefono</p>
             )}
-            <p className="mt-2 text-sm text-slate-600">
+            <p className="mt-2 text-[15px] text-muted">
               {row.assignee_id ? `Assegnata a ${assigneeLabel(row.assignee_id, people)}` : 'Nel pool'}
             </p>
           </li>
@@ -220,7 +220,7 @@ export function CompanyTable({
           rows={rows}
           getRowKey={(row) => row.id}
           onRowClick={onOpen}
-          rowClassName={(row) => (selected.has(row.id) ? 'bg-indigo-50/70' : '')}
+          rowClassName={(row) => (selected.has(row.id) ? 'bg-primary-50/70' : '')}
         />
       </div>
     </>

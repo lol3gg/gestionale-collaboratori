@@ -47,22 +47,22 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <ToastContext.Provider value={value}>
       {children}
-      <div className="pointer-events-none fixed bottom-4 left-4 z-[60] flex w-full max-w-sm flex-col gap-2 px-4">
+      <div className="pointer-events-none fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom))] left-0 z-[60] flex w-full max-w-sm flex-col gap-2 px-4 md:bottom-4 md:left-4">
         {toasts.map((toast) => (
           <div
             key={toast.id}
             role="status"
-            className={`pointer-events-auto flex items-center justify-between gap-3 rounded-xl px-4 py-3 text-sm shadow-lg ring-1 ${
+            className={`pointer-events-auto flex items-center justify-between gap-3 rounded-2xl px-4 py-3 text-[15px] shadow-card ring-1 animate-[fade-in_150ms_ease-out] ${
               toast.type === 'success'
-                ? 'bg-emerald-50 text-emerald-800 ring-emerald-600/15'
-                : 'bg-red-50 text-red-800 ring-red-600/15'
+                ? 'bg-success-bg text-success-fg ring-success-dot/20'
+                : 'bg-danger-bg text-danger-fg ring-danger-dot/20'
             }`}
           >
             <span>{toast.message}</span>
             {toast.action ? (
               <button
                 type="button"
-                className="shrink-0 rounded-md px-2 py-1 text-sm font-semibold underline-offset-2 hover:underline"
+                className="shrink-0 rounded-lg px-2 py-1 text-sm font-semibold underline-offset-2 hover:underline"
                 onClick={() => {
                   toast.action?.onClick()
                   dismiss(toast.id)

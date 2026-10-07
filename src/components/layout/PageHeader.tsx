@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { usePageTitle } from './PageTitleContext'
 
 type PageHeaderProps = {
   title: string
@@ -7,13 +8,15 @@ type PageHeaderProps = {
 }
 
 export function PageHeader({ title, description, action }: PageHeaderProps) {
+  usePageTitle(title)
+
   return (
-    <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-900">{title}</h1>
-        {description ? <p className="mt-1 text-sm text-slate-500">{description}</p> : null}
+    <div className="mb-5 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:items-start sm:justify-between">
+      <div className="min-w-0">
+        <h1 className="hidden text-2xl font-semibold tracking-tight text-ink md:block">{title}</h1>
+        {description ? <p className="text-[15px] text-muted md:mt-1">{description}</p> : null}
       </div>
-      {action}
+      {action ? <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">{action}</div> : null}
     </div>
   )
 }

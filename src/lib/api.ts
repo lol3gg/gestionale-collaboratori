@@ -16,6 +16,9 @@ import {
   listCollaborators,
   listCompanies,
   listExplanationBookingsRecord,
+  listExplanationExtraSlotsRecord,
+  addExplanationExtraSlotRecord,
+  removeExplanationExtraSlotRecord,
   bookExplanationRecord,
   recordCallOutcomeRecord,
   releaseCompanyRecord,
@@ -44,7 +47,9 @@ import type {
   DashboardViewer,
   DuplicatePolicy,
   ExplanationBooking,
+  ExplanationExtraSlot,
   BookExplanationInput,
+  AddExplanationExtraSlotInput,
   ImportCompanyRow,
   ImportResult,
 } from '../types'
@@ -68,6 +73,7 @@ export const queryKeys = {
   callQueue: (userId: string) => ['call-queue', userId] as const,
   callLogs: (companyId: string) => ['call-logs', companyId] as const,
   bookings: ['explanation-bookings'] as const,
+  extraSlots: ['explanation-extra-slots'] as const,
 }
 
 export async function getCompanies(filter?: CompanyFilter): Promise<Company[]> {
@@ -176,6 +182,12 @@ export async function getExplanationBookings(): Promise<ExplanationBooking[]> {
   return listExplanationBookingsRecord()
 }
 
+export async function getExplanationExtraSlots(): Promise<ExplanationExtraSlot[]> {
+  if (!isDemoMode) return unavailable()
+  await wait()
+  return listExplanationExtraSlotsRecord()
+}
+
 export async function bookExplanation(input: BookExplanationInput, actor: Actor): Promise<ExplanationBooking> {
   if (!isDemoMode) return unavailable()
   await wait()
@@ -186,6 +198,21 @@ export async function cancelExplanation(id: string, actor: Actor): Promise<void>
   if (!isDemoMode) return unavailable()
   await wait()
   cancelExplanationRecord(id, actor)
+}
+
+export async function addExplanationExtraSlot(
+  input: AddExplanationExtraSlotInput,
+  actor: Actor,
+): Promise<ExplanationExtraSlot> {
+  if (!isDemoMode) return unavailable()
+  await wait()
+  return addExplanationExtraSlotRecord(input, actor)
+}
+
+export async function removeExplanationExtraSlot(id: string, actor: Actor): Promise<void> {
+  if (!isDemoMode) return unavailable()
+  await wait()
+  removeExplanationExtraSlotRecord(id, actor)
 }
 
 export async function getCollaborators(): Promise<Collaborator[]> {

@@ -1,4 +1,11 @@
-import { assertBookableSlot, explanationSlots, rangesOverlap, startOfLocalDay } from '../calendar'
+import {
+  assertBookableSlot,
+  assertExtraSlot,
+  localDateKey,
+  rangesOverlap,
+  slotsForDay,
+  startOfLocalDay,
+} from '../calendar'
 import { findDuplicate, normalizeWebsite, validateCompanyDetails } from '../companies'
 import { isRecord, parseProfile } from '../guards'
 import { normalizeItalianPhone } from '../phone'
@@ -17,7 +24,9 @@ import type {
   CompanyStatus,
   DuplicatePolicy,
   ExplanationBooking,
+  ExplanationExtraSlot,
   BookExplanationInput,
+  AddExplanationExtraSlotInput,
   ImportCompanyRow,
   ImportResult,
   Profile,
@@ -32,6 +41,7 @@ export type DemoStore = {
   companies: Company[]
   callLogs: CallLog[]
   bookings: ExplanationBooking[]
+  extraSlots: ExplanationExtraSlot[]
 }
 
 let memory: DemoStore | null = null
@@ -172,13 +182,33 @@ function parseBooking(value: unknown): ExplanationBooking | null {
   return { id, company_id: companyId, user_id: userId, starts_at: startsAt, ends_at: endsAt, created_at: createdAt }
 }
 
+function parseExtraSlot(value: unknown): ExplanationExtraSlot | null {
+  if (!isRecord(value)) return null
+  const id = value.id
+  const dateKey = value.date_key
+  const startMin = value.start_min
+  const createdAt = value.created_at
+  if (
+    typeof id !== 'string' ||
+    typeof dateKey !== 'string' ||
+    !/^\d{4}-\d{2}-\d{2}$/.test(dateKey) ||
+    typeof startMin !== 'number' ||
+    !Number.isInteger(startMin) ||
+    typeof createdAt !== 'string'
+  ) {
+    return null
+  }
+  return { id, date_key: dateKey, start_min: startMin, created_at: createdAt }
+}
+
 function parseStore(value: unknown): DemoStore | null {
   if (!isRecord(value) || value.version !== DEMO_STORE_VERSION) return null
   if (
     !Array.isArray(value.collaborators) ||
     !Array.isArray(value.companies) ||
     !Array.isArray(value.callLogs) ||
-    !Array.isArray(value.bookings)
+    !Array.isArray(value.bookings) ||
+    !Array.isArray(value.extraSlots)
   ) {
     return null
   }
@@ -206,7 +236,13 @@ function parseStore(value: unknown): DemoStore | null {
     if (!booking) return null
     bookings.push(booking)
   }
-  return { version: DEMO_STORE_VERSION, collaborators, companies, callLogs, bookings }
+  const extraSlots: ExplanationExtraSlot[] = []
+  for (const item of value.extraSlots) {
+    const slot = parseExtraSlot(item)
+    if (!slot) return null
+    extraSlots.push(slot)
+  }
+  return { version: DEMO_STORE_VERSION, collaborators, companies, callLogs, bookings, extraSlots }
 }
 
 function persist(store: DemoStore): void {
@@ -681,13 +717,27 @@ function cloneBooking(booking: ExplanationBooking): ExplanationBooking {
   return { ...booking }
 }
 
+function cloneExtraSlot(slot: ExplanationExtraSlot): ExplanationExtraSlot {
+  return { ...slot }
+}
+
 export function listExplanationBookingsRecord(): ExplanationBooking[] {
   return readStore().bookings.map(cloneBooking)
 }
 
+export function listExplanationExtraSlotsRecord(): ExplanationExtraSlot[] {
+  return readStore().extraSlots.map(cloneExtraSlot)
+}
+
 export function bookExplanationRecord(input: BookExplanationInput, actor: Actor): ExplanationBooking {
-  const { starts, ends } = assertBookableSlot(input.startsAt)
   const store = readStore()
+  const startsProbe = new Date(input.startsAt)
+  if (Number.isNaN(startsProbe.getTime())) throw new Error('Orario non valido')
+  const daySlots = slotsForDay(startsProbe, store.extraSlots)
+  const { starts, ends } = assertBookableSlot(
+    input.startsAt,
+    daySlots.map((slot) => slot.startMin),
+  )
   const company = store.companies.find((item) => item.id === input.companyId)
   if (!company) throw new Error('Azienda non trovata')
   if (actor.role === 'collaboratore' && company.assignee_id !== actor.id) {
@@ -699,10 +749,8 @@ export function bookExplanationRecord(input: BookExplanationInput, actor: Actor)
     rangesOverlap(nextStart, nextEnd, new Date(booking.starts_at).getTime(), new Date(booking.ends_at).getTime()),
   )
   if (overlaps) throw new Error('Questo orario è già prenotato')
-  const sameDay = store.bookings.filter((booking) =>
-    isSameDay(new Date(booking.starts_at), starts),
-  )
-  if (sameDay.length >= explanationSlots().length) {
+  const sameDay = store.bookings.filter((booking) => isSameDay(new Date(booking.starts_at), starts))
+  if (sameDay.length >= daySlots.length) {
     throw new Error('Non ci sono altri posti in questa giornata')
   }
   const booking: ExplanationBooking = {
@@ -729,4 +777,48 @@ export function cancelExplanationRecord(id: string, actor: Actor): void {
     throw new Error('Puoi annullare solo le tue prenotazioni')
   }
   persist({ ...store, bookings: store.bookings.filter((item) => item.id !== id) })
+}
+
+export function addExplanationExtraSlotRecord(
+  input: AddExplanationExtraSlotInput,
+  actor: Actor,
+): ExplanationExtraSlot {
+  requireAdmin(actor)
+  const parts = input.dateKey.split('-').map(Number)
+  const year = parts[0]
+  const month = parts[1]
+  const dayNum = parts[2]
+  if (!year || !month || !dayNum || input.dateKey !== localDateKey(new Date(year, month - 1, dayNum))) {
+    throw new Error('Data non valida')
+  }
+  const day = startOfLocalDay(new Date(year, month - 1, dayNum))
+  const store = readStore()
+  const existing = slotsForDay(day, store.extraSlots)
+  assertExtraSlot(day, input.startMin, existing)
+  if (store.extraSlots.some((slot) => slot.date_key === input.dateKey && slot.start_min === input.startMin)) {
+    throw new Error('Questo orario è già stato aggiunto')
+  }
+  const slot: ExplanationExtraSlot = {
+    id: crypto.randomUUID(),
+    date_key: input.dateKey,
+    start_min: input.startMin,
+    created_at: new Date().toISOString(),
+  }
+  persist({ ...store, extraSlots: [...store.extraSlots, slot] })
+  return cloneExtraSlot(slot)
+}
+
+export function removeExplanationExtraSlotRecord(id: string, actor: Actor): void {
+  requireAdmin(actor)
+  const store = readStore()
+  const slot = store.extraSlots.find((item) => item.id === id)
+  if (!slot) throw new Error('Orario non trovato')
+  const parts = slot.date_key.split('-').map(Number)
+  const day = startOfLocalDay(new Date(parts[0]!, parts[1]! - 1, parts[2]!))
+  const booked = store.bookings.some((booking) => {
+    const starts = new Date(booking.starts_at)
+    return isSameDay(starts, day) && starts.getHours() * 60 + starts.getMinutes() === slot.start_min
+  })
+  if (booked) throw new Error('Non puoi rimuovere un orario già prenotato')
+  persist({ ...store, extraSlots: store.extraSlots.filter((item) => item.id !== id) })
 }

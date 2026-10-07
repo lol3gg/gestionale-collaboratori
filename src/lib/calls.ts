@@ -2,7 +2,30 @@ import type { CallLog, Company, CompanyStatus } from '../types'
 
 export type CallTab = 'da_chiamare' | 'da_richiamare' | 'mie' | 'chiusi'
 
+export const CALL_TABS: { id: CallTab; label: string }[] = [
+  { id: 'da_chiamare', label: 'Da chiamare' },
+  { id: 'da_richiamare', label: 'Da richiamare' },
+  { id: 'mie', label: 'Le mie' },
+  { id: 'chiusi', label: 'Chiusi' },
+]
+
 const CLOSED: CompanyStatus[] = ['accettato', 'rifiutato', 'numero_errato']
+
+export function latestUndoableLog(companyId: string, logs: CallLog[], userId: string, isAdmin: boolean): CallLog | null {
+  const history = logs
+    .filter((log) => log.company_id === companyId)
+    .sort((left, right) => right.created_at.localeCompare(left.created_at) || right.id.localeCompare(left.id))
+  const latest = history[0]
+  if (!latest) return null
+  if (!isAdmin && latest.user_id !== userId) return null
+  return latest
+}
+
+export function companyCallHistory(companyId: string, logs: CallLog[]): CallLog[] {
+  return logs
+    .filter((log) => log.company_id === companyId)
+    .sort((left, right) => right.created_at.localeCompare(left.created_at) || right.id.localeCompare(left.id))
+}
 
 export function matchesCallTab(company: Company, tab: CallTab, userId: string): boolean {
   if (tab === 'da_chiamare') return company.status === 'da_chiamare'

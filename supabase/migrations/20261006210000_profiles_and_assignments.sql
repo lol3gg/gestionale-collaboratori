@@ -145,6 +145,10 @@ create policy assignments_select_own
   to authenticated
   using (user_id = auth.uid());
 
+revoke all on table public.profiles from anon, public;
+revoke all on table public.companies from anon, public;
+revoke all on table public.company_assignments from anon, public;
+
 grant select on public.profiles to authenticated;
 grant select on public.companies to authenticated;
 grant select on public.company_assignments to authenticated;

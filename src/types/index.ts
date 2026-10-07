@@ -129,9 +129,21 @@ export type ExplanationBooking = {
   created_at: string
 }
 
+export type ExplanationExtraSlot = {
+  id: string
+  date_key: string
+  start_min: number
+  created_at: string
+}
+
 export type BookExplanationInput = {
   companyId: string
   startsAt: string
+}
+
+export type AddExplanationExtraSlotInput = {
+  dateKey: string
+  startMin: number
 }
 
 export type CompanyFilter = {

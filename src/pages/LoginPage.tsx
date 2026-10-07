@@ -29,36 +29,39 @@ function DemoLoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4 py-8 pb-[max(2rem,env(safe-area-inset-bottom))] pt-[max(2rem,env(safe-area-inset-top))]">
-      <div className="w-full max-w-3xl">
+    <div className="flex min-h-screen items-center justify-center bg-canvas px-4 py-8 pb-[max(2rem,env(safe-area-inset-bottom))] pt-[max(2rem,env(safe-area-inset-top))]">
+      <div className="w-full max-w-lg">
         <div className="mb-8 text-center">
-          <span className="inline-flex items-center rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold tracking-wide text-amber-900 ring-1 ring-amber-500/30">
+          <span className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-primary-600 text-sm font-bold text-white shadow-card">
+            GC
+          </span>
+          <span className="mt-4 inline-flex items-center rounded-full bg-warning-bg px-3 py-1 text-xs font-semibold tracking-wide text-warning-fg">
             DEMO
           </span>
-          <h1 className="mt-4 text-3xl font-semibold tracking-tight text-slate-900">Gestione Collaboratori</h1>
-          <p className="mt-2 text-sm text-slate-500">Scegli con quale ruolo entrare. I dati sono di esempio.</p>
+          <h1 className="mt-4 text-2xl font-semibold tracking-tight text-ink sm:text-3xl">Gestione Collaboratori</h1>
+          <p className="mt-2 text-[15px] text-muted">Scegli con quale ruolo entrare. I dati sono di esempio.</p>
         </div>
         {error ? (
-          <p className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-center text-sm text-red-700" role="alert">
+          <p className="mb-4 rounded-xl bg-danger-bg px-3 py-2.5 text-center text-[15px] text-danger-fg" role="alert">
             {error}
           </p>
         ) : null}
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-3 sm:grid-cols-2 sm:gap-4">
           <button
             type="button"
             onClick={() => choose('admin')}
-            className="rounded-2xl border border-slate-200 bg-white px-6 py-8 text-left shadow-sm transition hover:border-indigo-400 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 sm:py-10"
+            className="card-surface px-5 py-7 text-left transition duration-150 hover:border-primary-300 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 sm:py-9"
           >
-            <span className="block text-lg font-semibold text-slate-900">Entra come Admin</span>
-            <span className="mt-2 block text-sm text-slate-500">Lillo (Admin)</span>
+            <span className="block text-lg font-semibold tracking-tight text-ink">Entra come Admin</span>
+            <span className="mt-2 block text-[15px] text-muted">Lillo (Admin)</span>
           </button>
           <button
             type="button"
             onClick={() => choose('collaboratore')}
-            className="rounded-2xl border border-slate-200 bg-white px-6 py-8 text-left shadow-sm transition hover:border-indigo-400 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 sm:py-10"
+            className="card-surface px-5 py-7 text-left transition duration-150 hover:border-primary-300 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 sm:py-9"
           >
-            <span className="block text-lg font-semibold text-slate-900">Entra come Collaboratore</span>
-            <span className="mt-2 block text-sm text-slate-500">Marco Rossi</span>
+            <span className="block text-lg font-semibold tracking-tight text-ink">Entra come Collaboratore</span>
+            <span className="mt-2 block text-[15px] text-muted">Marco Rossi</span>
           </button>
         </div>
       </div>
@@ -91,20 +94,20 @@ function RealLoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
-      <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
+    <div className="flex min-h-screen items-center justify-center bg-canvas px-4 py-8 pb-[max(2rem,env(safe-area-inset-bottom))] pt-[max(2rem,env(safe-area-inset-top))]">
+      <div className="card-surface w-full max-w-md p-6 sm:p-8">
         <div className="mb-6 flex items-center gap-3">
-          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-600 text-sm font-semibold text-white">
+          <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary-600 text-sm font-semibold text-white">
             GC
           </span>
           <div>
-            <h1 className="text-lg font-semibold text-slate-900">Gestione Collaboratori</h1>
-            <p className="text-sm text-slate-500">Accedi al tuo account</p>
+            <h1 className="text-lg font-semibold tracking-tight text-ink">Gestione Collaboratori</h1>
+            <p className="text-[15px] text-muted">Accedi al tuo account</p>
           </div>
         </div>
         <form className="space-y-4" onSubmit={(event) => void submit(event)} noValidate>
           {error ? (
-            <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">
+            <p className="rounded-xl bg-danger-bg px-3 py-2.5 text-[15px] text-danger-fg" role="alert">
               {error}
             </p>
           ) : null}

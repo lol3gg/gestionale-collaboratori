@@ -17,7 +17,6 @@ export const adminNav: NavItem[] = [
 
 export const collaboratorNav: NavItem[] = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { to: '/chiamate', label: 'Chiamate', icon: Phone },
   { to: '/calendario', label: 'Calendario', icon: Calendar },
   { to: '/le-mie-aziende', label: 'Le mie aziende', icon: Building2 },
 ]

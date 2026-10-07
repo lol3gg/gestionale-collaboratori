@@ -4,4 +4,4 @@ export const DEMO_GIULIA_ID = 'demo-giulia'
 export const DEMO_LUCA_ID = 'demo-luca'
 export const DEMO_ROLE_KEY = 'gc_demo_role'
 export const DEMO_STORE_KEY = 'gc_demo_store'
-export const DEMO_STORE_VERSION = 4
+export const DEMO_STORE_VERSION = 5

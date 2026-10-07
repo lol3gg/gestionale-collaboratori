@@ -190,7 +190,7 @@ Deno.serve(async (req) => {
       .eq('id', callerId)
       .maybeSingle()
     if (callerError) {
-      console.error(callerError)
+      console.error('admin-users: lettura profilo chiamante fallita')
       return json({ error: 'Errore imprevisto. Riprova.' }, 500)
     }
     const caller = parseCaller(callerRow)
@@ -211,7 +211,7 @@ Deno.serve(async (req) => {
     const ensureProfile = async (userId: string): Promise<Response | null> => {
       const { data, error } = await adminClient.from('profiles').select('id').eq('id', userId).maybeSingle()
       if (error) {
-        console.error(error)
+        console.error('admin-users: lettura profilo target fallita')
         return json({ error: 'Errore imprevisto. Riprova.' }, 500)
       }
       if (!isRecord(data) || typeof data.id !== 'string') return json({ error: 'Utente non trovato' }, 404)
@@ -230,7 +230,7 @@ Deno.serve(async (req) => {
         if (message.includes('already') || message.includes('registered') || message.includes('exists')) {
           return json({ error: 'Esiste già un utente con questa email' }, 409)
         }
-        console.error(createError)
+        console.error('admin-users: creazione utente fallita')
         return json({ error: 'Impossibile creare l’utente' }, 400)
       }
 
@@ -242,7 +242,7 @@ Deno.serve(async (req) => {
         active: true,
       })
       if (upsertError) {
-        console.error(upsertError)
+        console.error('admin-users: upsert profilo fallito')
         await adminClient.auth.admin.deleteUser(created.user.id)
         return json({ error: 'Impossibile creare il profilo' }, 500)
       }
@@ -260,13 +260,13 @@ Deno.serve(async (req) => {
         .update({ full_name: input.full_name, role: input.role })
         .eq('id', input.user_id)
       if (updateError) {
-        console.error(updateError)
+        console.error('admin-users: aggiornamento collaboratore fallito')
         return json({ error: 'Impossibile aggiornare il collaboratore' }, 500)
       }
       const { error: metadataError } = await adminClient.auth.admin.updateUserById(input.user_id, {
         user_metadata: { full_name: input.full_name, role: input.role },
       })
-      if (metadataError) console.error(metadataError)
+      if (metadataError) console.error('admin-users: aggiornamento metadata fallito')
       return json({ ok: true })
     }
 
@@ -281,7 +281,7 @@ Deno.serve(async (req) => {
         .update({ active: input.active })
         .eq('id', input.user_id)
       if (activeError) {
-        console.error(activeError)
+        console.error('admin-users: aggiornamento stato fallito')
         return json({ error: 'Impossibile aggiornare lo stato' }, 500)
       }
       return json({ ok: true })
@@ -294,15 +294,15 @@ Deno.serve(async (req) => {
         password: input.password,
       })
       if (passwordError) {
-        console.error(passwordError)
+        console.error('admin-users: reset password fallito')
         return json({ error: 'Impossibile aggiornare la password' }, 500)
       }
       return json({ ok: true })
     }
 
     return json({ error: 'Azione non riconosciuta' }, 400)
-  } catch (error) {
-    console.error(error)
+  } catch {
+    console.error('admin-users: errore imprevisto')
     return json({ error: 'Errore imprevisto. Riprova.' }, 500)
   }
 })
