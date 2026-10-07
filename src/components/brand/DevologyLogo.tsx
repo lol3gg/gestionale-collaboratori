@@ -22,9 +22,9 @@ export function DevologyLogo({
         <svg viewBox="0 0 40 40" className="h-full w-full" fill="none">
           <defs>
             <linearGradient id={gradId} x1="6" y1="4" x2="34" y2="36" gradientUnits="userSpaceOnUse">
-              <stop stopColor="#FB7185" />
-              <stop offset="0.55" stopColor="#E11D48" />
-              <stop offset="1" stopColor="#9F1239" />
+              <stop stopColor="#34D399" />
+              <stop offset="0.55" stopColor="#10B981" />
+              <stop offset="1" stopColor="#047857" />
             </linearGradient>
           </defs>
           <rect width="40" height="40" rx="12" fill={`url(#${gradId})`} />
