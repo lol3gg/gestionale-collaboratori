@@ -6,14 +6,23 @@ import { adminNav, collaboratorNav } from './nav'
 type SidebarProps = {
   open: boolean
   onClose: () => void
+  onNavigate: () => void
 }
 
-export function Sidebar({ open, onClose }: SidebarProps) {
+export function Sidebar({ open, onClose, onNavigate }: SidebarProps) {
   const { profile } = useProfile()
   const items = profile?.role === 'admin' ? adminNav : collaboratorNav
 
   return (
     <>
+      {open ? (
+        <button
+          type="button"
+          aria-label="Chiudi menu"
+          className="fixed inset-0 z-30 bg-slate-900/40 md:hidden"
+          onClick={onClose}
+        />
+      ) : null}
       <aside
         className={`fixed inset-y-0 left-0 z-40 flex w-[min(18rem,86vw)] flex-col border-r border-slate-200 bg-white transition-transform duration-200 md:w-64 ${
           open ? 'translate-x-0' : '-translate-x-full'
@@ -41,6 +50,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
             <NavLink
               key={item.to}
               to={item.to}
+              onClick={onNavigate}
               className={({ isActive }) =>
                 `flex min-h-11 items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition ${
                   isActive ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-100'
