@@ -64,7 +64,7 @@ export function Header() {
             <button
               type="button"
               onClick={() => setMenuOpen((open) => !open)}
-              className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-primary-400 to-primary-700 text-xs font-bold text-ink shadow-sm transition-transform duration-150 active:scale-[0.98]"
+              className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-primary-400 to-primary-700 text-xs font-bold text-white shadow-sm transition-transform duration-150 active:scale-[0.98]"
               aria-label="Menu account"
               aria-expanded={menuOpen}
             >
@@ -74,9 +74,7 @@ export function Header() {
               <div className="absolute right-0 top-12 z-30 w-52 overflow-hidden rounded-2xl border border-line bg-surface py-1 shadow-card animate-[fade-in_150ms_ease-out]">
                 <div className="border-b border-line px-3 py-2.5">
                   <p className="truncate text-sm font-medium text-ink">{displayName}</p>
-                  <p className="mt-0.5 text-xs text-muted">
-                    {isDemo ? `Demo · ${roleLabel(profile.role)}` : roleLabel(profile.role)}
-                  </p>
+                  <p className="mt-0.5 text-xs text-muted">{roleLabel(profile.role)}</p>
                 </div>
                 {isDemo ? (
                   <button
@@ -105,13 +103,7 @@ export function Header() {
           <div className="min-w-0 text-right">
             <p className="truncate text-sm font-medium text-ink">{displayName}</p>
           </div>
-          {isDemo ? (
-            <Badge variant="warning" className="px-2.5 py-1 text-xs font-bold tracking-wide">
-              DEMO · {roleLabel(profile.role)}
-            </Badge>
-          ) : (
-            <Badge variant={profile.role === 'admin' ? 'info' : 'neutral'}>{roleLabel(profile.role)}</Badge>
-          )}
+          <Badge variant={profile.role === 'admin' ? 'info' : 'neutral'}>{roleLabel(profile.role)}</Badge>
           {isDemo ? (
             <Button variant="secondary" className="shrink-0" onClick={changeRole}>
               Cambia ruolo

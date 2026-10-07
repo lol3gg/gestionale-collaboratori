@@ -175,7 +175,7 @@ function SupabaseAuthProvider({ children }: { children: ReactNode }) {
 
   const enterAs = useCallback((role: UserRole): string | null => {
     void role
-    return 'La scelta del ruolo è disponibile solo in modalità demo'
+    return 'La scelta del ruolo non è disponibile'
   }, [])
 
   const value = useMemo<AuthContextValue>(
@@ -230,7 +230,7 @@ function DemoAuthProvider({ children }: { children: ReactNode }) {
   const login = useCallback(async (email: string, password: string) => {
     void email
     void password
-    throw new Error('Il login con email sarà disponibile quando la modalità demo è disattivata')
+    throw new Error('Il login con email non è disponibile in questa sessione')
   }, [])
 
   const refreshProfile = useCallback(() => {

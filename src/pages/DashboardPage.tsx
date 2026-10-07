@@ -129,7 +129,7 @@ export function DashboardPage() {
                     <span
                       className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-xs font-bold tabular-nums ${
                         index === 0
-                          ? 'bg-gradient-to-br from-primary-300 to-primary-600 text-ink'
+                          ? 'bg-gradient-to-br from-primary-400 to-primary-700 text-white'
                           : 'bg-canvas text-muted'
                       }`}
                     >

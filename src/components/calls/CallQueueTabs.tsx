@@ -23,7 +23,7 @@ export function CallQueueTabs({ tab, counts, onChange }: CallQueueTabsProps) {
             onClick={() => onChange(item.id)}
           >
             {item.label}
-            <span className={`ml-2 tabular-nums ${selected ? 'text-ink/70' : 'text-muted'}`}>{counts[item.id]}</span>
+            <span className={`ml-2 tabular-nums ${selected ? 'text-white/80' : 'text-muted'}`}>{counts[item.id]}</span>
           </button>
         )
       })}

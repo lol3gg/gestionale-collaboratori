@@ -67,16 +67,16 @@
   --gc-muted: #64748b;
   --gc-line: #e2e8f0;
 
-  --gc-primary-50: #fff8e6;
-  --gc-primary-100: #ffefc2;
-  --gc-primary-200: #ffe08a;
-  --gc-primary-300: #ffcd4d;
-  --gc-primary-400: #f5b820;
-  --gc-primary-500: #e8a201;
-  --gc-primary-600: #c98500;
-  --gc-primary-700: #a66a00;
-  --gc-primary-800: #855400;
-  --gc-primary-900: #6b4300;
+  --gc-primary-50: #fef2f2;
+  --gc-primary-100: #fee2e2;
+  --gc-primary-200: #fecaca;
+  --gc-primary-300: #fca5a5;
+  --gc-primary-400: #f87171;
+  --gc-primary-500: #ef4444;
+  --gc-primary-600: #dc2626;
+  --gc-primary-700: #b91c1c;
+  --gc-primary-800: #991b1b;
+  --gc-primary-900: #7f1d1d;
 
   --gc-success-bg: #ecfdf3;
   --gc-success-fg: #067647;
@@ -84,9 +84,9 @@
   --gc-danger-bg: #fef3f2;
   --gc-danger-fg: #b42318;
   --gc-danger-dot: #f04438;
-  --gc-warning-bg: #fff6e5;
-  --gc-warning-fg: #9a6700;
-  --gc-warning-dot: #e8a201;
+  --gc-warning-bg: #fffbeb;
+  --gc-warning-fg: #b54708;
+  --gc-warning-dot: #f79009;
   --gc-quiet-bg: #f1f5f9;
   --gc-quiet-fg: #475569;
   --gc-quiet-dot: #94a3b8;
@@ -96,8 +96,8 @@
 
   --gc-shadow-card: 0 1px 2px rgb(20 24 33 / 0.04), 0 12px 32px rgb(20 24 33 / 0.06);
   --gc-shadow-lift: 0 -8px 32px rgb(20 24 33 / 0.1);
-  --gc-glow: rgb(232 162 1 / 0.22);
-  --gc-mesh-a: rgb(232 162 1 / 0.14);
+  --gc-glow: rgb(220 38 38 / 0.22);
+  --gc-mesh-a: rgb(220 38 38 / 0.12);
   --gc-mesh-b: rgb(20 24 33 / 0.045);
 }
 
@@ -111,16 +111,16 @@
   --gc-muted: #9aa3b5;
   --gc-line: #2a3344;
 
-  --gc-primary-50: #2a220f;
-  --gc-primary-100: #3a2e12;
-  --gc-primary-200: #5a4518;
-  --gc-primary-300: #8a6a1c;
-  --gc-primary-400: #c99412;
-  --gc-primary-500: #e8a201;
-  --gc-primary-600: #f0b322;
-  --gc-primary-700: #f6c65a;
-  --gc-primary-800: #fad98f;
-  --gc-primary-900: #fef0c8;
+  --gc-primary-50: #2a1215;
+  --gc-primary-100: #3b1519;
+  --gc-primary-200: #5c1d24;
+  --gc-primary-300: #9f1239;
+  --gc-primary-400: #e11d48;
+  --gc-primary-500: #f43f5e;
+  --gc-primary-600: #fb7185;
+  --gc-primary-700: #fda4af;
+  --gc-primary-800: #fecdd3;
+  --gc-primary-900: #ffe4e6;
 
   --gc-success-bg: #0f2a1c;
   --gc-success-fg: #6ee7a8;
@@ -130,7 +130,7 @@
   --gc-danger-dot: #f87171;
   --gc-warning-bg: #2a210f;
   --gc-warning-fg: #fcd34d;
-  --gc-warning-dot: #e8a201;
+  --gc-warning-dot: #fbbf24;
   --gc-quiet-bg: #1b2230;
   --gc-quiet-fg: #b0b8c7;
   --gc-quiet-dot: #6b7588;
@@ -140,8 +140,8 @@
 
   --gc-shadow-card: 0 1px 2px rgb(0 0 0 / 0.35), 0 14px 36px rgb(0 0 0 / 0.35);
   --gc-shadow-lift: 0 -10px 36px rgb(0 0 0 / 0.45);
-  --gc-glow: rgb(232 162 1 / 0.28);
-  --gc-mesh-a: rgb(232 162 1 / 0.1);
+  --gc-glow: rgb(244 63 94 / 0.28);
+  --gc-mesh-a: rgb(225 29 72 / 0.12);
   --gc-mesh-b: rgb(90 120 180 / 0.08);
 }
 
@@ -305,7 +305,7 @@ a,
 }
 
 .brand-gradient-text {
-  background: linear-gradient(120deg, var(--color-primary-700), var(--color-primary-500) 45%, #f5c518 90%);
+  background: linear-gradient(120deg, var(--color-primary-700), var(--color-primary-500) 45%, #fb7185 90%);
   background-size: 180% 180%;
   -webkit-background-clip: text;
   background-clip: text;
@@ -314,9 +314,14 @@ a,
 }
 
 .btn-primary-glow {
-  background: linear-gradient(135deg, #f5c518 0%, #e8a201 45%, #c98500 100%);
-  color: #0b1220;
-  box-shadow: 0 1px 2px rgb(20 24 33 / 0.08), 0 8px 20px rgb(232 162 1 / 0.28);
+  background: linear-gradient(135deg, #f87171 0%, #ef4444 42%, #b91c1c 100%);
+  color: #ffffff;
+  box-shadow: 0 1px 2px rgb(20 24 33 / 0.08), 0 8px 20px rgb(220 38 38 / 0.3);
+}
+
+.dark .btn-primary-glow {
+  background: linear-gradient(135deg, #fb7185 0%, #e11d48 45%, #be123c 100%);
+  color: #ffffff;
 }
 
 .btn-primary-glow:hover {
@@ -332,6 +337,14 @@ a,
 .login-shell {
   position: relative;
   overflow: hidden;
+  touch-action: manipulation;
+}
+
+@supports (height: 100dvh) {
+  .login-shell.fixed {
+    height: 100dvh;
+    max-height: 100dvh;
+  }
 }
 
 .login-shell::before {
@@ -341,7 +354,7 @@ a,
   width: 420px;
   height: 420px;
   border-radius: 999px;
-  background: radial-gradient(circle, rgb(232 162 1 / 0.28), transparent 68%);
+  background: radial-gradient(circle, rgb(220 38 38 / 0.26), transparent 68%);
   animation: soft-pulse 4s ease-in-out infinite;
   pointer-events: none;
 }
