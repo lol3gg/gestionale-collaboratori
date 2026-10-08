@@ -35,43 +35,46 @@ export function LoginPage() {
   }
 
   return (
-    <div className="login-shell flex min-h-screen items-center justify-center px-4 py-8 pb-[max(2rem,env(safe-area-inset-bottom))] pt-[max(2rem,env(safe-area-inset-top))]">
+    <div className="login-shell flex min-h-screen flex-col items-center justify-center px-4 py-8 pb-[max(2rem,env(safe-area-inset-bottom))] pt-[max(2rem,env(safe-area-inset-top))]">
       <div className="absolute right-4 top-[max(1rem,env(safe-area-inset-top))] z-10 sm:right-6">
         <ThemeToggle compact className="min-h-10 w-10 px-0" />
       </div>
-      <div className="page-enter relative z-10 card-surface w-full max-w-md p-6 sm:p-8">
-        <div className="mb-6 flex items-center gap-3">
-          <DevologyLogo markClassName="h-11 w-11" showWordmark={false} />
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted">Devology</p>
-            <h1 className="text-lg font-semibold tracking-tight text-ink">Gestione Collaboratori</h1>
-            <p className="text-[15px] text-muted">Accedi al tuo account</p>
-          </div>
+
+      <div className="page-enter relative z-10 flex w-full max-w-md flex-col items-center">
+        <DevologyLogo hero showWordmark markClassName="h-[4.75rem] w-[4.75rem] sm:h-[5.25rem] sm:w-[5.25rem]" />
+        <p className="mt-3 max-w-sm text-center text-[15px] leading-relaxed text-muted">
+          Gestione Collaboratori — chiama, assegna e tieni il ritmo del team.
+        </p>
+
+        <div className="card-surface mt-8 w-full p-6 sm:p-8">
+          <h1 className="text-lg font-semibold tracking-tight text-ink">Accedi</h1>
+          <p className="mt-1 text-[15px] text-muted">Entra con la tua email aziendale</p>
+
+          <form className="mt-5 space-y-4" onSubmit={(event) => void submit(event)} noValidate>
+            {error ? (
+              <p className="rounded-xl bg-danger-bg px-3 py-2.5 text-[15px] text-danger-fg" role="alert">
+                {error}
+              </p>
+            ) : null}
+            <Input
+              label="Email"
+              type="email"
+              autoComplete="username"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+            />
+            <Input
+              label="Password"
+              type="password"
+              autoComplete="current-password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+            />
+            <Button type="submit" className="w-full" loading={submitting}>
+              Accedi
+            </Button>
+          </form>
         </div>
-        <form className="space-y-4" onSubmit={(event) => void submit(event)} noValidate>
-          {error ? (
-            <p className="rounded-xl bg-danger-bg px-3 py-2.5 text-[15px] text-danger-fg" role="alert">
-              {error}
-            </p>
-          ) : null}
-          <Input
-            label="Email"
-            type="email"
-            autoComplete="username"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-          />
-          <Input
-            label="Password"
-            type="password"
-            autoComplete="current-password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-          />
-          <Button type="submit" className="w-full" loading={submitting}>
-            Accedi
-          </Button>
-        </form>
       </div>
     </div>
   )

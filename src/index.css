@@ -285,7 +285,96 @@ a,
 }
 
 .logo-mark {
-  border-radius: 12px;
+  border-radius: 18px;
+  isolation: isolate;
+}
+
+.logo-mark--hero {
+  border-radius: 22px;
+  animation: logo-float 5.5s ease-in-out infinite;
+  filter: drop-shadow(0 14px 28px color-mix(in srgb, var(--color-primary-600) 28%, transparent));
+}
+
+.logo-mark--hero .logo-glow-disc {
+  animation: logo-pulse 3.8s ease-in-out infinite;
+  transform-origin: 32px 32px;
+}
+
+.logo-mark--hero .logo-sheen {
+  animation: logo-sheen-sweep 4.8s ease-in-out infinite;
+}
+
+.logo-mark--hero .logo-orbit {
+  animation: logo-orbit-fade 3.2s ease-in-out infinite;
+}
+
+.logo-mark--hero .logo-orbit--slow {
+  animation-duration: 4.6s;
+  animation-delay: 0.4s;
+}
+
+.logo-mark--hero .logo-node--a {
+  animation: logo-node-blink 2.4s ease-in-out infinite;
+}
+
+.logo-mark--hero .logo-node--b {
+  animation: logo-node-blink 2.4s ease-in-out infinite 0.35s;
+}
+
+.logo-mark--hero .logo-node--c {
+  animation: logo-node-blink 2.4s ease-in-out infinite 0.7s;
+}
+
+@keyframes logo-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+@keyframes logo-pulse {
+  0%,
+  100% {
+    opacity: 0.12;
+    transform: scale(0.92);
+  }
+  50% {
+    opacity: 0.28;
+    transform: scale(1.08);
+  }
+}
+
+@keyframes logo-sheen-sweep {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 0.85;
+  }
+}
+
+@keyframes logo-orbit-fade {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 0.85;
+  }
+}
+
+@keyframes logo-node-blink {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
 }
 
 .brand-gradient-text {
