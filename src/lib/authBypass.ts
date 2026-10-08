@@ -1,5 +1,5 @@
 /** `true` = niente login (anteprima aperta). Metti `false` per riattivare l’accesso. */
-export const AUTH_BYPASS = true
+export const AUTH_BYPASS = false
 
 export const BYPASS_PROFILE = {
   id: '00000000-0000-4000-8000-000000000001',
