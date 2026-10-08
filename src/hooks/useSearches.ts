@@ -24,6 +24,7 @@ export function useSearchGeoOptions(params?: { region?: string; province?: strin
     queryKey: queryKeys.searchGeo(params),
     queryFn: () => getSearchGeoOptions(params),
     enabled,
+    placeholderData: (previous) => previous,
   })
 }
 
