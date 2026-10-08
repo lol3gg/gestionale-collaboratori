@@ -615,7 +615,7 @@ export type Database = {
         Returns: Json
       }
       estimate_places_search_regions: {
-        Args: { p_regions: string[]; p_keywords: string[] }
+        Args: { p_regions: string[]; p_keywords: string[]; p_provinces?: string[] | null }
         Returns: Json
       }
       add_search_results_to_companies: {

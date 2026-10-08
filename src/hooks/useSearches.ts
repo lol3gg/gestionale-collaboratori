@@ -68,7 +68,10 @@ export function useSearchResults(searchId: string | null, enabled = true, poll =
   })
 }
 
-export function useSearchGeoOptions(params?: { country?: string; region?: string }, enabled = true) {
+export function useSearchGeoOptions(
+  params?: { country?: string; region?: string; regions?: string[] },
+  enabled = true,
+) {
   return useQuery({
     queryKey: queryKeys.searchGeo(params),
     queryFn: () => getSearchGeoOptions(params),

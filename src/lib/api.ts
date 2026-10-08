@@ -4,14 +4,11 @@ import type { CallTab } from './calls'
 import {
   demoAssignCompany,
   demoClaimCompany,
-  demoDeleteSavedSearch,
   demoGetCallLogs,
   demoGetCallQueue,
   demoGetCollaborators,
   demoGetCompanies,
   demoGetDashboardStats,
-  demoGetSavedSearches,
-  demoGetSearchGeo,
   demoRecordCall,
   demoReleaseCompany,
   demoSetStatus,
@@ -81,8 +78,12 @@ export const queryKeys = {
   searchJob: (searchId: string) => ['search-job', searchId] as const,
   searchResults: (searchId: string) => ['search-results', searchId] as const,
   searchCoverage: (searchId: string) => ['search-coverage', searchId] as const,
-  searchGeo: (params?: { country?: string; region?: string }) =>
-    ['search-geo', params?.country ?? 'IT', params?.region ?? 'all'] as const,
+  searchGeo: (params?: { country?: string; region?: string; regions?: string[] }) =>
+    [
+      'search-geo',
+      params?.country ?? 'IT',
+      (params?.regions ?? (params?.region ? [params.region] : [])).join('|') || 'all',
+    ] as const,
 }
 
 function isAuthBlocked(error: { message?: string; code?: string } | null): boolean {
@@ -1078,7 +1079,6 @@ function mapSearchResult(row: Record<string, unknown>): SearchResultRow {
 }
 
 export async function getPlacesSearches(): Promise<PlacesSearch[]> {
-  if (isDemoMode()) return demoGetSavedSearches()
   const { data, error } = await db()
     .from('searches')
     .select(SEARCH_SELECT)
@@ -1095,10 +1095,6 @@ export async function getPlacesSearch(id: string): Promise<PlacesSearch | null> 
 }
 
 export async function deletePlacesSearch(id: string): Promise<void> {
-  if (isDemoMode()) {
-    demoDeleteSavedSearch(id)
-    return
-  }
   const { error } = await db().from('searches').delete().eq('id', id)
   throwQuery(error)
 }
@@ -1178,21 +1174,74 @@ export async function addSearchResultsToCompanies(ids: string[]): Promise<AddSea
 export async function estimatePlacesSearch(params: {
   regions: string[]
   keywords: string[]
+  provinces?: string[]
 }): Promise<PlacesEstimate> {
+  const empty: PlacesEstimate = {
+    comuni: 0,
+    keywords: 0,
+    queries: 0,
+    estimated_cost_eur: 0,
+    cost_per_request_eur: 0.032,
+    comuni_preview: [],
+  }
+
+  // Preferisci RPC (con preview). Se fallisce (migrazione non applicata / admin check), conta da comuni.
   const { data, error } = await db().rpc('estimate_places_search_regions', {
     p_regions: params.regions,
     p_keywords: params.keywords,
+    p_provinces: params.provinces?.length ? params.provinces : null,
   })
-  throwQuery(error)
-  if (!isRecord(data)) {
-    return { comuni: 0, keywords: 0, queries: 0, estimated_cost_eur: 0, cost_per_request_eur: 0.032 }
+
+  if (!error && isRecord(data)) {
+    const rawPreview = Array.isArray(data.comuni_preview) ? data.comuni_preview : []
+    const comuni_preview: PlacesEstimate['comuni_preview'] = []
+    for (const item of rawPreview) {
+      if (!isRecord(item)) continue
+      comuni_preview.push({
+        name: String(item.name ?? ''),
+        province: String(item.province ?? ''),
+        population: typeof item.population === 'number' ? item.population : null,
+      })
+    }
+    return {
+      comuni: Number(data.comuni ?? 0),
+      keywords: Number(data.keywords ?? 0),
+      queries: Number(data.queries ?? 0),
+      estimated_cost_eur: Number(data.estimated_cost_eur ?? 0),
+      cost_per_request_eur: Number(data.cost_per_request_eur ?? 0.032),
+      comuni_preview,
+    }
   }
+
+  let query = db()
+    .from('comuni')
+    .select('name, province, population')
+    .not('bbox_sw_lat', 'is', null)
+    .in('region', params.regions)
+    .order('population', { ascending: true, nullsFirst: false })
+  if (params.provinces && params.provinces.length > 0) {
+    query = query.in('province', params.provinces)
+  }
+  const { data: rows, error: countErr } = await query
+  if (allowEmptyOnBypass(countErr)) return empty
+  throwQuery(countErr)
+
+  const list = (rows ?? []) as Array<{ name: string; province: string; population: number | null }>
+  const comuni = list.length
+  const keywords = params.keywords.length
+  const queries = comuni * keywords
+  const cost = 0.032
   return {
-    comuni: Number(data.comuni ?? 0),
-    keywords: Number(data.keywords ?? 0),
-    queries: Number(data.queries ?? 0),
-    estimated_cost_eur: Number(data.estimated_cost_eur ?? 0),
-    cost_per_request_eur: Number(data.cost_per_request_eur ?? 0.032),
+    comuni,
+    keywords,
+    queries,
+    estimated_cost_eur: Math.round(queries * cost * 10000) / 10000,
+    cost_per_request_eur: cost,
+    comuni_preview: list.slice(0, 80).map((r) => ({
+      name: r.name,
+      province: r.province,
+      population: r.population,
+    })),
   }
 }
 
@@ -1211,25 +1260,43 @@ export async function cancelImportBatch(batchId: string): Promise<CancelBatchRes
 export async function getSearchGeoOptions(params?: {
   country?: string
   region?: string
+  regions?: string[]
 }): Promise<SearchGeoOptions> {
-  if (isDemoMode()) return demoGetSearchGeo(params)
   const country = params?.country && params.country !== 'all' ? params.country : 'IT'
-  const region = params?.region && params.region !== 'all' ? params.region : null
+  const regions =
+    params?.regions && params.regions.length > 0
+      ? params.regions
+      : params?.region && params.region !== 'all'
+        ? [params.region]
+        : []
 
   const { data: regionRows, error: regionErr } = await db()
     .from('comuni')
     .select('region')
     .eq('country', country)
-  if (allowEmptyOnBypass(regionErr)) return { countries: ['IT'], regions: [], provinces: [] }
+    .not('bbox_sw_lat', 'is', null)
+  if (allowEmptyOnBypass(regionErr)) return { countries: [country], regions: [], provinces: [] }
   throwQuery(regionErr)
 
-  let provincesQuery = db().from('comuni').select('province').eq('country', country)
-  if (region) provincesQuery = provincesQuery.eq('region', region)
+  let provincesQuery = db()
+    .from('comuni')
+    .select('province')
+    .eq('country', country)
+    .not('bbox_sw_lat', 'is', null)
+  if (regions.length === 1) provincesQuery = provincesQuery.eq('region', regions[0])
+  else if (regions.length > 1) provincesQuery = provincesQuery.in('region', regions)
   const { data: provinceRows, error: provinceErr } = await provincesQuery
+  if (allowEmptyOnBypass(provinceErr)) {
+    return {
+      countries: [country],
+      regions: uniqueSorted((regionRows ?? []).map((r) => r.region).filter(Boolean)),
+      provinces: [],
+    }
+  }
   throwQuery(provinceErr)
 
   return {
-    countries: ['IT'],
+    countries: [country],
     regions: uniqueSorted((regionRows ?? []).map((r) => r.region).filter(Boolean)),
     provinces: uniqueSorted((provinceRows ?? []).map((r) => r.province).filter(Boolean)),
   }

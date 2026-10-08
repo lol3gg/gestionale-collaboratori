@@ -281,6 +281,7 @@ export type PlacesEstimate = {
   queries: number
   estimated_cost_eur: number
   cost_per_request_eur: number
+  comuni_preview: Array<{ name: string; province: string; population: number | null }>
 }
 
 export type SearchJob = {

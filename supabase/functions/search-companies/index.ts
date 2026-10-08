@@ -4,7 +4,6 @@ import {
   PlacesAuthError,
   PlacesNetworkError,
   PlacesQuotaError,
-  splitBBoxIntoQuadrants,
 } from './providers/googlePlaces.ts'
 import type { BBox, NormalizedPlace, SearchProvider } from './providers/types.ts'
 
@@ -15,7 +14,6 @@ const corsHeaders: Record<string, string> = {
 }
 
 const BATCH_SIZE = 5
-const MAX_DEPTH = 4
 const REGION_CODES: Record<string, string> = {
   IT: 'IT',
   CH: 'CH',
@@ -658,10 +656,12 @@ async function processBatch(
     const bbox = cellBBox(cell)
 
     try {
-      const { places, requestCount: used, saturated } = await provider.search(textQuery, {
+      // 1 richiesta Places = 1 comune (niente paginazione né suddivisione bbox):
+      // il tetto (es. 60) corrisponde al numero di comuni elaborabili.
+      const { places, requestCount: used } = await provider.search(textQuery, {
         languageCode: 'it',
         regionCode,
-        maxPages: 3,
+        maxPages: 1,
         locationRestriction: bbox,
         locationHint: {
           city: comuneName,
@@ -698,35 +698,7 @@ async function processBatch(
         }
       }
 
-      let newStatus = 'fatto'
-      const childRows: Record<string, unknown>[] = []
-
-      if (saturated && newUnique > 0) {
-        if (cell.level >= MAX_DEPTH) {
-          newStatus = 'da_verificare_manualmente'
-        } else {
-          newStatus = 'saturo'
-          const quads = splitBBoxIntoQuadrants(bbox)
-          for (const q of quads) {
-            childRows.push({
-              job_id: jobId,
-              search_id: searchId,
-              comune_id: cell.comune_id,
-              keyword: cell.keyword,
-              level: cell.level + 1,
-              bbox_sw_lat: q.swLat,
-              bbox_sw_lng: q.swLng,
-              bbox_ne_lat: q.neLat,
-              bbox_ne_lng: q.neLng,
-              status: 'da_fare',
-              parent_cell_id: cell.id,
-            })
-          }
-        }
-      } else if (saturated && newUnique === 0) {
-        // Saturo ma nessun risultato nuovo → non dividere
-        newStatus = 'fatto'
-      }
+      const newStatus = 'fatto'
 
       await admin
         .from('search_cells')
@@ -739,13 +711,6 @@ async function processBatch(
           error_message: null,
         })
         .eq('id', cell.id)
-
-      if (childRows.length > 0) {
-        const { error: childErr } = await admin.from('search_cells').insert(childRows)
-        if (childErr) {
-          console.error('search-companies: insert quadranti fallito', childErr.message)
-        }
-      }
     } catch (err) {
       const message =
         err instanceof PlacesQuotaError || err instanceof PlacesAuthError || err instanceof PlacesNetworkError
@@ -932,21 +897,43 @@ Deno.serve(async (req) => {
       auth: { autoRefreshToken: false, persistSession: false },
     })
 
-    const { data: userData, error: userError } = await authClient.auth.getUser(token)
-    if (userError || !userData.user) return json({ error: 'Non autenticato' }, 401)
-    const callerId = userData.user.id
+    const allowBypass = Deno.env.get('AUTH_BYPASS') === 'true'
+    const { data: userData } = await authClient.auth.getUser(token)
 
-    const { data: callerRow, error: callerError } = await admin
-      .from('profiles')
-      .select('role, active')
-      .eq('id', callerId)
-      .maybeSingle()
-    if (callerError) {
-      console.error('search-companies: lettura profilo fallita')
-      return json({ error: 'Errore imprevisto. Riprova.' }, 500)
-    }
-    if (!callerRow || callerRow.role !== 'admin' || !callerRow.active) {
-      return json({ error: 'Operazione riservata agli amministratori attivi' }, 403)
+    let callerId: string
+    if (userData?.user) {
+      const { data: callerRow, error: callerError } = await admin
+        .from('profiles')
+        .select('role, active')
+        .eq('id', userData.user.id)
+        .maybeSingle()
+      if (callerError) {
+        console.error('search-companies: lettura profilo fallita')
+        return json({ error: 'Errore imprevisto. Riprova.' }, 500)
+      }
+      if (!callerRow || callerRow.role !== 'admin' || !callerRow.active) {
+        return json({ error: 'Operazione riservata agli amministratori attivi' }, 403)
+      }
+      callerId = userData.user.id
+    } else if (allowBypass) {
+      // Anteprima senza login: attribuiamo le ricerche al primo admin reale in profiles
+      const { data: adminProfile, error: adminErr } = await admin
+        .from('profiles')
+        .select('id')
+        .eq('role', 'admin')
+        .eq('active', true)
+        .order('created_at', { ascending: true })
+        .limit(1)
+        .maybeSingle()
+      if (adminErr || !adminProfile?.id) {
+        return json({
+          error:
+            'AUTH_BYPASS attivo ma nessun admin in profiles. Crea un utente admin su Supabase oppure disattiva il bypass.',
+        }, 500)
+      }
+      callerId = adminProfile.id as string
+    } else {
+      return json({ error: 'Non autenticato' }, 401)
     }
 
     let payload: unknown
@@ -1009,6 +996,7 @@ Deno.serve(async (req) => {
         .select(
           'id, name, province, region, country, population, bbox_sw_lat, bbox_sw_lng, bbox_ne_lat, bbox_ne_lng',
         )
+        .eq('country', input.country)
         .in('region', input.regions)
         .not('bbox_sw_lat', 'is', null)
         .order('population', { ascending: true, nullsFirst: false })
@@ -1023,14 +1011,17 @@ Deno.serve(async (req) => {
       const comuniRows = (comuni ?? []) as ComuneRow[]
       if (comuniRows.length === 0) {
         return json({
-          error: 'Nessun comune con bounding box per le regioni scelte. Carica il seed OSM/ISTAT.',
+          error:
+            input.provinces.length > 0
+              ? 'Nessun comune con area mappa per le province scelte. Seleziona altre province o carica il seed OSM/ISTAT.'
+              : 'Nessun comune con area mappa per le regioni scelte. Seleziona le province oppure carica il seed OSM/ISTAT.',
         }, 400)
       }
 
       const cellEstimate = comuniRows.length * input.keywords.length
       if (cellEstimate > input.max_requests) {
         return json({
-          error: `Servono almeno ${cellEstimate} celle (comuni×keyword) ma il tetto è ${input.max_requests}. Alza il tetto o riduci le regioni.`,
+          error: `Servono ${cellEstimate} ricerche (comuni×parole) ma il tetto è ${input.max_requests}. Scegli meno province/parole chiave oppure alza il tetto.`,
         }, 400)
       }
 

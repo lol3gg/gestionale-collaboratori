@@ -37,7 +37,7 @@ import {
   type SearchStatus,
 } from '../types'
 
-const DEFAULT_MAX = 100
+const DEFAULT_MAX = 60
 
 const statusMeta: Record<SearchStatus, { label: string; variant: BadgeVariant }> = {
   draft: { label: 'Bozza', variant: 'quiet' },
@@ -75,6 +75,7 @@ export function RicercaPage() {
 
   const [country, setCountry] = useState('IT')
   const [regions, setRegions] = useState<string[]>(['Lombardia'])
+  const [provinces, setProvinces] = useState<string[]>([])
   const [presetKeywords, setPresetKeywords] = useState<string[]>(['impresa edile'])
   const [customKeyword, setCustomKeyword] = useState('')
   const [maxRequests, setMaxRequests] = useState(DEFAULT_MAX)
@@ -87,7 +88,10 @@ export function RicercaPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [hideDiscarded, setHideDiscarded] = useState(true)
 
-  const geoQuery = useSearchGeoOptions({ country }, profile?.role === 'admin')
+  const geoQuery = useSearchGeoOptions(
+    { country, regions },
+    profile?.role === 'admin',
+  )
   const jobQuery = useSearchJob(activeId, Boolean(activeId))
   const jobStatus = jobQuery.data?.status
   const isActiveRun = jobStatus === 'queued' || jobStatus === 'running'
@@ -149,6 +153,14 @@ export function RicercaPage() {
     setRegions((current) =>
       current.includes(name) ? current.filter((r) => r !== name) : [...current, name],
     )
+    setProvinces([])
+    setEstimate(null)
+  }
+
+  const toggleProvince = (code: string) => {
+    setProvinces((current) =>
+      current.includes(code) ? current.filter((p) => p !== code) : [...current, code],
+    )
     setEstimate(null)
   }
 
@@ -164,10 +176,33 @@ export function RicercaPage() {
       setEstimate(null)
       return
     }
-    const result = await estimateMutation.mutateAsync({ regions, keywords })
+    const result = await estimateMutation.mutateAsync({
+      regions,
+      keywords,
+      provinces: provinces.length > 0 ? provinces : undefined,
+    })
     setEstimate(result)
     return result
   }
+
+  useEffect(() => {
+    if (regions.length === 0 || keywords.length === 0) {
+      setEstimate(null)
+      return
+    }
+    const timer = window.setTimeout(() => {
+      void estimateMutation
+        .mutateAsync({
+          regions,
+          keywords,
+          provinces: provinces.length > 0 ? provinces : undefined,
+        })
+        .then((result) => setEstimate(result))
+        .catch(() => undefined)
+    }, 350)
+    return () => window.clearTimeout(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- stima solo su filtri
+  }, [regions, provinces, keywords, country])
 
   const openConfirm = async () => {
     const result = await runEstimate()
@@ -182,7 +217,7 @@ export function RicercaPage() {
     const result = await startSearch.mutateAsync({
       country,
       regions,
-      provinces: [],
+      provinces,
       keywords,
       max_requests: maxRequests,
       estimated_queries: est.queries,
@@ -196,6 +231,7 @@ export function RicercaPage() {
   const relaunch = (search: PlacesSearch) => {
     setCountry(search.country || 'IT')
     setRegions(search.regions.length ? search.regions : search.region ? [search.region] : [])
+    setProvinces(search.provinces ?? [])
     const known = new Set<string>(KEYWORD_PRESETS as unknown as string[])
     setPresetKeywords(search.keywords.filter((k) => known.has(k)))
     setCustomKeyword(search.keywords.find((k) => !known.has(k)) ?? '')
@@ -235,7 +271,11 @@ export function RicercaPage() {
   }
 
   const regionOptions = geoQuery.data?.regions ?? []
+  const provinceOptions = geoQuery.data?.provinces ?? []
   const overCap = Boolean(estimate && estimate.queries > maxRequests)
+  const needsProvinceSplit = Boolean(
+    estimate && estimate.queries > maxRequests && provinces.length === 0 && provinceOptions.length > 0,
+  )
   const progressPct =
     coverage && coverage.comuni_total > 0
       ? Math.min(100, Math.round((coverage.comuni_done / coverage.comuni_total) * 100))
@@ -252,7 +292,7 @@ export function RicercaPage() {
     <section>
       <PageHeader
         title="Ricerca"
-        description="Cerca in tutta la regione: comuni e celle vengono creati automaticamente."
+        description="Una ricerca Google Places per comune. Con tetto 60 scegli le province della regione."
       />
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]">
@@ -260,7 +300,7 @@ export function RicercaPage() {
           <div className="rounded-2xl border border-line bg-surface p-4 md:p-5">
             <div className="mb-4 flex items-center gap-2">
               <SearchIcon className="h-4 w-4 text-primary-600" aria-hidden="true" />
-              <h2 className="text-sm font-semibold tracking-tight text-ink">Cerca in tutta la regione</h2>
+              <h2 className="text-sm font-semibold tracking-tight text-ink">Nuova ricerca</h2>
             </div>
 
             <div className="space-y-3">
@@ -272,6 +312,7 @@ export function RicercaPage() {
                   onChange={(e) => {
                     setCountry(e.target.value)
                     setRegions([])
+                    setProvinces([])
                     setEstimate(null)
                   }}
                 >
@@ -286,7 +327,9 @@ export function RicercaPage() {
               <fieldset>
                 <legend className="mb-1.5 text-sm font-medium text-ink">Regioni</legend>
                 {regionOptions.length === 0 ? (
-                  <p className="text-sm text-muted">Nessuna regione con comuni in archivio.</p>
+                  <p className="text-sm text-muted">
+                    Nessuna regione con comuni in archivio. Carica il seed OSM/ISTAT su Supabase.
+                  </p>
                 ) : (
                   <div className="flex flex-wrap gap-2">
                     {regionOptions.map((name) => {
@@ -309,6 +352,60 @@ export function RicercaPage() {
                   </div>
                 )}
               </fieldset>
+
+              {regions.length > 0 && provinceOptions.length > 0 ? (
+                <fieldset>
+                  <legend className="mb-1.5 text-sm font-medium text-ink">
+                    Province / aree
+                    <span className="ml-1 font-normal text-muted">
+                      (obbligatorie se i comuni superano il tetto)
+                    </span>
+                  </legend>
+                  <div className="mb-2 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setProvinces([])
+                        setEstimate(null)
+                      }}
+                      className={`rounded-lg border px-2.5 py-1.5 text-sm font-medium transition ${
+                        provinces.length === 0
+                          ? 'border-primary-400 bg-primary-50 text-primary-800'
+                          : 'border-line bg-canvas text-muted hover:text-ink'
+                      }`}
+                    >
+                      Tutta la regione
+                    </button>
+                    {provinceOptions.map((code) => {
+                      const on = provinces.includes(code)
+                      return (
+                        <button
+                          key={code}
+                          type="button"
+                          onClick={() => toggleProvince(code)}
+                          className={`rounded-lg border px-2.5 py-1.5 text-sm font-medium transition ${
+                            on
+                              ? 'border-primary-400 bg-primary-50 text-primary-800'
+                              : 'border-line bg-canvas text-muted hover:text-ink'
+                          }`}
+                        >
+                          {code}
+                        </button>
+                      )
+                    })}
+                  </div>
+                  {needsProvinceSplit ? (
+                    <p className="text-xs font-medium text-danger-fg">
+                      Troppi comuni per {maxRequests} richieste. Seleziona una o più province (es. MI
+                      oppure CO).
+                    </p>
+                  ) : (
+                    <p className="text-xs text-muted">
+                      Ogni comune = 1 richiesta Places con la parola chiave scelta.
+                    </p>
+                  )}
+                </fieldset>
+              ) : null}
 
               <fieldset>
                 <legend className="mb-1.5 text-sm font-medium text-ink">Parole chiave</legend>
@@ -340,10 +437,18 @@ export function RicercaPage() {
                     setEstimate(null)
                   }}
                 />
+                {keywords.length > 1 ? (
+                  <p className="mt-1.5 text-xs text-warning-fg">
+                    Più parole chiave moltiplicano le richieste (comuni × parole). Con tetto 60 resta
+                    su 1 parola.
+                  </p>
+                ) : null}
               </fieldset>
 
               <label className="block">
-                <span className="mb-1.5 block text-sm font-medium text-ink">Tetto massimo richieste</span>
+                <span className="mb-1.5 block text-sm font-medium text-ink">
+                  Tetto massimo richieste
+                </span>
                 <input
                   type="number"
                   min={1}
@@ -355,6 +460,9 @@ export function RicercaPage() {
                     setEstimate(null)
                   }}
                 />
+                <span className="mt-1 block text-xs text-muted">
+                  Default 60: al massimo 60 comuni con una sola parola chiave.
+                </span>
               </label>
 
               <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-line bg-canvas px-3 py-3">
@@ -383,15 +491,15 @@ export function RicercaPage() {
                 disabled={regions.length === 0 || keywords.length === 0}
                 onClick={() => void runEstimate()}
               >
-                Stima
+                Aggiorna stima
               </Button>
               <Button
-                disabled={regions.length === 0 || keywords.length === 0}
+                disabled={regions.length === 0 || keywords.length === 0 || overCap}
                 loading={startSearch.isPending}
                 onClick={() => void openConfirm()}
               >
                 <Play className="h-4 w-4" aria-hidden="true" />
-                Cerca in tutta la regione
+                Avvia ricerca
               </Button>
             </div>
 
@@ -404,18 +512,39 @@ export function RicercaPage() {
                 <p>
                   <span className="font-semibold tabular-nums">{estimate.comuni}</span> comuni ×{' '}
                   <span className="font-semibold tabular-nums">{estimate.keywords}</span> parole ={' '}
-                  <span className="font-semibold tabular-nums">{estimate.queries}</span> celle
-                  minime
+                  <span className="font-semibold tabular-nums">{estimate.queries}</span> richieste
                 </p>
                 <p className="mt-1 text-muted">
-                  Costo indicativo (min): {formatEur(estimate.estimated_cost_eur)}. Con
-                  suddivisione può salire.
+                  Costo indicativo: {formatEur(estimate.estimated_cost_eur)} · tetto {maxRequests}
                 </p>
                 {overCap ? (
                   <p className="mt-2 font-medium">
-                    Supera il tetto di {maxRequests}. Riduci regioni/parole o alza il tetto.
+                    {needsProvinceSplit
+                      ? `Supera il tetto: seleziona le province da coprire ora (restano ${estimate.queries - maxRequests} comuni fuori).`
+                      : `Supera il tetto di ${maxRequests}. Riduci province/parole o alza il tetto.`}
                   </p>
                 ) : null}
+                {estimate.comuni_preview.length > 0 ? (
+                  <details className="mt-2">
+                    <summary className="cursor-pointer text-xs font-medium text-muted hover:text-ink">
+                      Comuni che verranno cercati ({estimate.comuni})
+                    </summary>
+                    <ul className="mt-2 max-h-40 space-y-0.5 overflow-y-auto text-xs text-muted">
+                      {estimate.comuni_preview.map((c) => (
+                        <li key={`${c.province}-${c.name}`}>
+                          {c.name} ({c.province})
+                        </li>
+                      ))}
+                      {estimate.comuni > estimate.comuni_preview.length ? (
+                        <li>… e altri {estimate.comuni - estimate.comuni_preview.length}</li>
+                      ) : null}
+                    </ul>
+                  </details>
+                ) : null}
+              </div>
+            ) : estimateMutation.isPending ? (
+              <div className="mt-4 flex justify-center py-3">
+                <Spinner className="h-5 w-5 text-primary-600" />
               </div>
             ) : null}
           </div>
@@ -485,8 +614,8 @@ export function RicercaPage() {
         <div className="min-w-0 space-y-4">
           {!activeId ? (
             <EmptyState
-              title="Avvia una ricerca regionale"
-              description="Scegli una o più regioni e le parole chiave: il sistema crea le celle comune×keyword e le elabora da solo."
+              title="Avvia una ricerca per comuni"
+              description="Scegli paese, regione e se serve le province. Con tetto 60 il sistema cerca 1 volta per comune e si ferma al limite."
             />
           ) : (
             <>
@@ -681,8 +810,8 @@ export function RicercaPage() {
 
       <Modal
         open={confirmOpen}
-        title="Conferma ricerca regionale"
-        description="Verranno creati comuni×parole chiave e elaborati a lotti, con ripresa automatica."
+        title="Conferma ricerca"
+        description="Verrà fatta 1 richiesta Places per ogni comune, a lotti, fino al tetto impostato."
         onClose={() => !startSearch.isPending && setConfirmOpen(false)}
         footer={
           <>
@@ -707,6 +836,11 @@ export function RicercaPage() {
           <div className="space-y-3 text-sm">
             <p>
               <span className="font-medium text-ink">{regions.join(', ')}</span>
+              {provinces.length > 0 ? (
+                <span className="text-muted"> · province {provinces.join(', ')}</span>
+              ) : (
+                <span className="text-muted"> · tutta la regione</span>
+              )}
             </p>
             <p className="text-muted">Parole chiave: {keywords.join(', ')}</p>
             <p className="text-muted">
@@ -719,7 +853,7 @@ export function RicercaPage() {
             >
               <p>
                 {estimate.comuni} comuni × {estimate.keywords} parole ={' '}
-                <strong className="tabular-nums">{estimate.queries}</strong> celle minime
+                <strong className="tabular-nums">{estimate.queries}</strong> richieste
               </p>
               <p className="mt-1">Costo indicativo: {formatEur(estimate.estimated_cost_eur)}</p>
               <p className="mt-1">Tetto confermato: {maxRequests}</p>
