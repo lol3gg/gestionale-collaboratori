@@ -1,6 +1,8 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { createPortal } from 'react-dom'
+import { useNavigate } from 'react-router-dom'
 import { X } from 'lucide-react'
+import { useAuth } from '../../auth/AuthProvider'
 import { changePassword } from '../../lib/api'
 import { roleLabel } from '../../lib/labels'
 import { errorMessage, mapAuthError, validatePassword } from '../../lib/validators'
@@ -17,11 +19,14 @@ type ProfileSheetProps = {
 
 export function ProfileSheet({ open, profile, onClose }: ProfileSheetProps) {
   const toast = useToast()
+  const navigate = useNavigate()
+  const { realRole, viewingAsCollaborator, setViewAsCollaborator } = useAuth()
   const [currentPassword, setCurrentPassword] = useState('')
   const [nextPassword, setNextPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const canSwitchRole = realRole === 'admin'
 
   useEffect(() => {
     if (!open) return
@@ -113,9 +118,35 @@ export function ProfileSheet({ open, profile, onClose }: ProfileSheetProps) {
             </div>
             <div>
               <dt className="text-xs font-semibold uppercase tracking-[0.06em] text-muted">Ruolo</dt>
-              <dd className="mt-1 text-ink">{roleLabel(profile.role)}</dd>
+              <dd className="mt-1 text-ink">
+                {roleLabel(profile.role)}
+                {viewingAsCollaborator ? ' (anteprima)' : ''}
+              </dd>
             </div>
           </dl>
+
+          {canSwitchRole ? (
+            <div className="border-t border-line pt-5">
+              <Button
+                type="button"
+                variant="secondary"
+                className="w-full"
+                onClick={() => {
+                  if (viewingAsCollaborator) {
+                    setViewAsCollaborator(false)
+                    onClose()
+                    navigate('/dashboard', { replace: true })
+                  } else {
+                    setViewAsCollaborator(true)
+                    onClose()
+                    navigate('/le-mie-aziende', { replace: true })
+                  }
+                }}
+              >
+                {viewingAsCollaborator ? 'Torna alla vista admin' : 'Passa alla vista collaboratore'}
+              </Button>
+            </div>
+          ) : null}
 
           <form className="space-y-3 border-t border-line pt-5" onSubmit={(event) => void submit(event)} noValidate>
             <h3 className="text-sm font-semibold text-ink">Cambia password</h3>
