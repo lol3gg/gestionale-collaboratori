@@ -4,7 +4,6 @@ import { RequireAuth } from './components/RequireAuth'
 import { RequireRole } from './components/RequireRole'
 import { FullPageSpinner } from './components/ui/Spinner'
 import { useProfile } from './hooks/useProfile'
-import { isDemoMode } from './lib/demo'
 import { isSupabaseConfigured } from './lib/supabase'
 import { AziendePage } from './pages/AziendePage'
 import { CalendarioPage } from './pages/CalendarioPage'
@@ -25,7 +24,7 @@ function AdminOnlyChiamate() {
 }
 
 export function App() {
-  if (!isDemoMode && !isSupabaseConfigured) return <SetupPage />
+  if (!isSupabaseConfigured) return <SetupPage />
 
   return (
     <Routes>

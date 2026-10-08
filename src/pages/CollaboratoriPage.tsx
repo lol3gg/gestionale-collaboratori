@@ -33,7 +33,7 @@ export function CollaboratoriPage() {
     {
       key: 'name',
       header: 'Nome',
-      cell: (row) => <span className="font-medium text-slate-900">{row.full_name || '—'}</span>,
+      cell: (row) => <span className="font-medium text-ink">{row.full_name || '—'}</span>,
     },
     {
       key: 'email',

@@ -6,6 +6,10 @@ export function consumeAuthNotice(): string | null {
   return notice
 }
 
+export function rememberAuthNotice(message: string): void {
+  sessionStorage.setItem(AUTH_NOTICE_KEY, message)
+}
+
 export function formatDate(iso: string): string {
   const date = new Date(iso)
   if (Number.isNaN(date.getTime())) return '—'

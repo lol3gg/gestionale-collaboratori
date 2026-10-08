@@ -16,6 +16,7 @@ export function parseProfile(value: unknown): Profile | null {
   const role = value.role
   const active = value.active
   const createdAt = value.created_at
+  const dailyGoal = value.daily_goal
   if (
     typeof id !== 'string' ||
     typeof fullName !== 'string' ||
@@ -32,6 +33,7 @@ export function parseProfile(value: unknown): Profile | null {
     email,
     role,
     active,
+    daily_goal: typeof dailyGoal === 'number' && dailyGoal >= 1 ? dailyGoal : 30,
     created_at: createdAt,
   }
 }

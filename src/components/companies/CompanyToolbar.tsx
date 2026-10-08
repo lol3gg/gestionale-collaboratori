@@ -57,7 +57,7 @@ export function CompanyToolbar({
     <div className="mb-4 space-y-3">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
         <label className="block min-w-0 flex-1">
-          <span className="mb-1.5 block text-sm font-medium text-slate-700">Cerca</span>
+          <span className="mb-1.5 block text-sm font-medium text-ink">Cerca</span>
           <input
             value={filters.search}
             aria-label="Cerca per nome o città"
@@ -71,12 +71,12 @@ export function CompanyToolbar({
             Colonne
           </Button>
           {columnsOpen ? (
-            <div className="absolute right-0 z-20 mt-2 w-52 rounded-xl border border-slate-200 bg-white p-3 shadow-lg">
-              <label className="flex items-center gap-2 text-sm text-slate-700">
+            <div className="absolute right-0 z-20 mt-2 w-52 rounded-xl border border-line bg-surface p-3 shadow-lg">
+              <label className="flex items-center gap-2 text-sm text-ink">
                 <input type="checkbox" checked={showEmail} onChange={(event) => onToggleEmail(event.target.checked)} />
                 Email
               </label>
-              <label className="mt-2 flex items-center gap-2 text-sm text-slate-700">
+              <label className="mt-2 flex items-center gap-2 text-sm text-ink">
                 <input
                   type="checkbox"
                   checked={showEmployees}
@@ -160,7 +160,7 @@ function FilterSelect({
 }) {
   return (
     <label className="block">
-      <span className="mb-1.5 block text-sm font-medium text-slate-700">{label}</span>
+      <span className="mb-1.5 block text-sm font-medium text-ink">{label}</span>
       <select className={controlClassName} value={value} onChange={(event) => onChange(event.target.value)}>
         {children}
       </select>

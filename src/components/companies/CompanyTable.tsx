@@ -102,7 +102,7 @@ export function CompanyTable({
     {
       key: 'name',
       header: sortHeader('Nome', 'name'),
-      cell: (row) => <span className="font-medium text-slate-900">{row.name}</span>,
+      cell: (row) => <span className="font-medium text-ink">{row.name}</span>,
     },
     { key: 'city', header: sortHeader('Città', 'city'), cell: (row) => row.city || '—' },
     { key: 'province', header: sortHeader('Provincia', 'province'), cell: (row) => row.province || '—' },
@@ -113,7 +113,7 @@ export function CompanyTable({
         row.phone ? (
           <a
             href={telHref(row.phone)}
-            className="text-indigo-700 hover:underline"
+            className="text-primary-700 hover:underline"
             onClick={(event) => event.stopPropagation()}
           >
             {row.phone}
@@ -133,7 +133,7 @@ export function CompanyTable({
             href={href}
             target="_blank"
             rel="noreferrer"
-            className="text-indigo-700 hover:underline"
+            className="text-primary-700 hover:underline"
             onClick={(event) => event.stopPropagation()}
           >
             {websiteLabel(row.website)}

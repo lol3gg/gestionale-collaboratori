@@ -18,6 +18,7 @@ import type {
   Actor,
   CompanyDetails,
   CompanyDraft,
+  CompanyListParams,
   CompanyStatus,
   DuplicatePolicy,
   ImportCompanyRow,
@@ -28,11 +29,14 @@ function toActor(profile: Profile): Actor {
   return { id: profile.id, full_name: profile.full_name, role: profile.role }
 }
 
-export function useCompanies(profile: Profile | null) {
-  const assigneeId = profile?.role === 'collaboratore' ? profile.id : undefined
+export function useCompanies(profile: Profile | null, params?: CompanyListParams) {
+  const listParams: CompanyListParams = {
+    ...params,
+    ...(profile?.role === 'collaboratore' && !params?.assigneeId ? { assigneeId: profile.id } : {}),
+  }
   return useQuery({
-    queryKey: queryKeys.companies(assigneeId),
-    queryFn: () => getCompanies(assigneeId ? { assigneeId } : undefined),
+    queryKey: queryKeys.companies(listParams),
+    queryFn: () => getCompanies(listParams),
     enabled: profile !== null,
   })
 }
@@ -45,6 +49,7 @@ function useRefreshCompanies() {
     await queryClient.invalidateQueries({ queryKey: ['call-queue'] })
     await queryClient.invalidateQueries({ queryKey: ['call-logs'] })
     await queryClient.invalidateQueries({ queryKey: queryKeys.collaborators })
+    await queryClient.invalidateQueries({ queryKey: queryKeys.bookings })
   }
 }
 

@@ -1,9 +1,10 @@
 import type { CallLog, Company, CompanyStatus } from '../types'
 
-export type CallTab = 'da_chiamare' | 'da_richiamare' | 'mie' | 'chiusi'
+export type CallTab = 'da_chiamare' | 'da_riprovare' | 'da_richiamare' | 'mie' | 'chiusi'
 
 export const CALL_TABS: { id: CallTab; label: string }[] = [
   { id: 'da_chiamare', label: 'Da chiamare' },
+  { id: 'da_riprovare', label: 'Da riprovare' },
   { id: 'da_richiamare', label: 'Da richiamare' },
   { id: 'mie', label: 'Le mie' },
   { id: 'chiusi', label: 'Chiusi' },
@@ -27,11 +28,17 @@ export function companyCallHistory(companyId: string, logs: CallLog[]): CallLog[
     .sort((left, right) => right.created_at.localeCompare(left.created_at) || right.id.localeCompare(left.id))
 }
 
+/** Scheda primaria: mutua esclusione (Le mie non duplica le schede per stato). */
+export function primaryCallTab(company: Company, userId: string): CallTab {
+  if (CLOSED.includes(company.status)) return 'chiusi'
+  if (company.assignee_id === userId) return 'mie'
+  if (company.status === 'da_richiamare') return 'da_richiamare'
+  if (company.status === 'non_risponde') return 'da_riprovare'
+  return 'da_chiamare'
+}
+
 export function matchesCallTab(company: Company, tab: CallTab, userId: string): boolean {
-  if (tab === 'da_chiamare') return company.status === 'da_chiamare'
-  if (tab === 'da_richiamare') return company.status === 'da_richiamare'
-  if (tab === 'chiusi') return CLOSED.includes(company.status)
-  return company.assignee_id === userId
+  return primaryCallTab(company, userId) === tab
 }
 
 export function attemptsToday(companyId: string, logs: CallLog[]): number {
@@ -52,12 +59,29 @@ function lastWorkedAt(company: Company, logs: CallLog[]): string {
   return times.sort((left, right) => left.localeCompare(right)).at(-1) ?? company.created_at
 }
 
+/** Tentativo non_risponde più vecchio (o created_at azienda). */
+function oldestRetryAttemptAt(company: Company, logs: CallLog[]): string {
+  const times = logs
+    .filter((log) => log.company_id === company.id && log.outcome === 'non_risponde')
+    .map((log) => log.created_at)
+    .sort((left, right) => left.localeCompare(right))
+  return times[0] ?? company.created_at
+}
+
 export function sortCallQueue(companies: Company[], tab: CallTab, logs: CallLog[]): Company[] {
   const copy = [...companies]
   if (tab === 'da_richiamare') {
     copy.sort(
       (left, right) =>
         (left.callback_at ?? '').localeCompare(right.callback_at ?? '') ||
+        left.name.localeCompare(right.name, 'it'),
+    )
+    return copy
+  }
+  if (tab === 'da_riprovare') {
+    copy.sort(
+      (left, right) =>
+        oldestRetryAttemptAt(left, logs).localeCompare(oldestRetryAttemptAt(right, logs)) ||
         left.name.localeCompare(right.name, 'it'),
     )
     return copy

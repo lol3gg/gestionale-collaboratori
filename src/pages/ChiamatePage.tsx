@@ -1,3 +1,5 @@
+import { useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { CallCard } from '../components/calls/CallCard'
 import { CallbackModal } from '../components/calls/CallbackModal'
 import { CallQueueFilters } from '../components/calls/CallQueueFilters'
@@ -13,6 +15,12 @@ import { errorMessage } from '../lib/validators'
 export function ChiamatePage() {
   const { profile, loading } = useProfile()
   const board = useCallQueueBoard(profile)
+  const [searchParams] = useSearchParams()
+  const qParam = searchParams.get('q') ?? ''
+
+  useEffect(() => {
+    if (qParam) board.setQuery(qParam)
+  }, [qParam, board.setQuery])
 
   if (loading || !profile || board.queue.isPending) {
     return (
@@ -93,7 +101,7 @@ export function ChiamatePage() {
         onClose={() => board.setCallbackFor(null)}
         onConfirm={(callbackAt) => {
           if (!board.callbackFor) return
-          board.saveOutcome(board.callbackFor, 'da_richiamare', callbackAt)
+          void board.saveOutcome(board.callbackFor, 'da_richiamare', callbackAt)
         }}
       />
     </section>

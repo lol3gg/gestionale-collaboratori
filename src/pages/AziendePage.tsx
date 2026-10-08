@@ -13,17 +13,12 @@ import { useToast } from '../components/ui/Toast'
 import { useCollaborators } from '../hooks/useCollaborators'
 import { useCompanies } from '../hooks/useCompanies'
 import { useProfile } from '../hooks/useProfile'
-import {
-  filterCompanies,
-  sortCompanies,
-  type CompanyListFilters,
-  type CompanySortKey,
-} from '../lib/companies'
+import { type CompanyListFilters, type CompanySortKey } from '../lib/companies'
 import { downloadCsv } from '../lib/csv'
 import { formatDate } from '../lib/format'
 import { statusLabel } from '../lib/labels'
 import { errorMessage } from '../lib/validators'
-import type { Company } from '../types'
+import type { Company, CompanyListParams } from '../types'
 
 const PAGE_SIZE = 25
 const emptyCompanies: Company[] = []
@@ -51,7 +46,6 @@ function filtersActive(filters: CompanyListFilters): boolean {
 export function AziendePage() {
   const toast = useToast()
   const { profile, loading } = useProfile()
-  const query = useCompanies(profile)
   const peopleQuery = useCollaborators()
   const [filters, setFilters] = useState<CompanyListFilters>(initialFilters)
   const [sort, setSort] = useState<{ key: CompanySortKey; dir: 'asc' | 'desc' }>({ key: 'name', dir: 'asc' })
@@ -66,23 +60,35 @@ export function AziendePage() {
 
   const isAdmin = profile?.role === 'admin'
   const people = peopleQuery.data ?? []
-  const companies = query.data ?? emptyCompanies
 
   const visibleFilters = useMemo<CompanyListFilters>(
     () => ({ ...filters, assignee: isAdmin ? filters.assignee : 'all' }),
     [filters, isAdmin],
   )
 
-  const assigneeName = (id: string | null) => companyAssigneeLabel(id, people)
+  const listParams = useMemo<CompanyListParams>(
+    () => ({
+      search: visibleFilters.search,
+      status: visibleFilters.status,
+      region: visibleFilters.region,
+      province: visibleFilters.province,
+      assignee: visibleFilters.assignee,
+      phone: visibleFilters.phone,
+      sortKey: sort.key,
+      sortDir: sort.dir,
+      page,
+      pageSize: PAGE_SIZE,
+    }),
+    [visibleFilters, sort, page],
+  )
 
-  const sorted = useMemo(() => {
-    const filtered = filterCompanies(companies, visibleFilters)
-    return sortCompanies(filtered, sort.key, sort.dir, assigneeName)
-  }, [companies, visibleFilters, sort, people])
-
-  const pageCount = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE))
+  const query = useCompanies(profile, listParams)
+  const companies = query.data?.companies ?? emptyCompanies
+  const total = query.data?.total ?? 0
+  const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE))
   const safePage = Math.min(page, pageCount - 1)
-  const pageRows = sorted.slice(safePage * PAGE_SIZE, safePage * PAGE_SIZE + PAGE_SIZE)
+
+  const assigneeName = (id: string | null) => companyAssigneeLabel(id, people)
   const openCompany = companies.find((company) => company.id === openId) ?? null
 
   useEffect(() => {
@@ -101,8 +107,21 @@ export function AziendePage() {
   const exportRows = () => {
     downloadCsv(
       'aziende.csv',
-      ['nome', 'città', 'provincia', 'regione', 'indirizzo', 'telefono', 'email', 'sito', 'dipendenti', 'stato', 'assegnato a', 'data inserimento'],
-      sorted.map((company) => [
+      [
+        'nome',
+        'città',
+        'provincia',
+        'regione',
+        'indirizzo',
+        'telefono',
+        'email',
+        'sito',
+        'dipendenti',
+        'stato',
+        'assegnato a',
+        'data inserimento',
+      ],
+      companies.map((company) => [
         company.name,
         company.city,
         company.province,
@@ -117,13 +136,13 @@ export function AziendePage() {
         formatDate(company.created_at),
       ]),
     )
-    toast.success('CSV esportato')
+    toast.success('CSV esportato (pagina corrente)')
   }
 
   if (loading || !profile || query.isPending) {
     return (
       <section>
-        <PageHeader title={profile?.role === 'collaboratore' ? 'Le mie aziende' : 'Aziende'} />
+        <PageHeader title="Aziende" />
         <div className="flex justify-center py-24">
           <Spinner className="h-8 w-8 text-primary-600" />
         </div>
@@ -131,27 +150,20 @@ export function AziendePage() {
     )
   }
 
-  const title = isAdmin ? 'Aziende' : 'Le mie aziende'
-  const description = isAdmin
-    ? 'Tutte le aziende del portafoglio.'
-    : 'Solo le aziende assegnate a te.'
-
   return (
     <section>
       <PageHeader
-        title={title}
-        description={description}
+        title="Aziende"
+        description="Tutte le aziende del portafoglio."
         action={
           <div className="flex flex-wrap gap-2">
-            {isAdmin ? (
-              <Button variant="secondary" onClick={() => setImportOpen(true)}>
-                Importa CSV
-              </Button>
-            ) : null}
-            <Button variant="secondary" disabled={sorted.length === 0} onClick={exportRows}>
+            <Button variant="secondary" onClick={() => setImportOpen(true)}>
+              Importa CSV
+            </Button>
+            <Button variant="secondary" disabled={companies.length === 0} onClick={exportRows}>
               Esporta CSV
             </Button>
-            {isAdmin ? <Button onClick={() => setCreateOpen(true)}>Aggiungi azienda</Button> : null}
+            <Button onClick={() => setCreateOpen(true)}>Aggiungi azienda</Button>
           </div>
         }
       />
@@ -177,7 +189,7 @@ export function AziendePage() {
             onReset={() => setFilters(initialFilters)}
           />
 
-          {isAdmin && selected.length > 0 ? (
+          {selected.length > 0 ? (
             <div className="mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-primary-100 bg-primary-50 px-4 py-3">
               <span className="text-sm font-medium text-primary-900">{selected.length} selezionate</span>
               <Button variant="secondary" onClick={() => setBulk('assign')}>
@@ -195,15 +207,13 @@ export function AziendePage() {
             </div>
           ) : null}
 
-          {sorted.length === 0 ? (
+          {total === 0 ? (
             <EmptyState
               title={filtersActive(visibleFilters) ? 'Nessun risultato' : 'Nessuna azienda'}
               description={
                 filtersActive(visibleFilters)
                   ? 'Nessuna azienda corrisponde ai filtri.'
-                  : isAdmin
-                    ? 'Aggiungi un’azienda o importa un CSV.'
-                    : 'Non hai aziende assegnate.'
+                  : 'Aggiungi un’azienda o importa un CSV.'
               }
               action={
                 filtersActive(visibleFilters) ? (
@@ -216,32 +226,40 @@ export function AziendePage() {
           ) : (
             <>
               <CompanyTable
-                rows={pageRows}
+                rows={companies}
                 people={people}
                 showEmail={showEmail}
                 showEmployees={showEmployees}
                 sort={sort}
                 onSort={(key) =>
                   setSort((current) =>
-                    current.key === key ? { key, dir: current.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' },
+                    current.key === key
+                      ? { key, dir: current.dir === 'asc' ? 'desc' : 'asc' }
+                      : { key, dir: 'asc' },
                   )
                 }
-                selectable={isAdmin}
+                selectable
                 selected={new Set(selected)}
                 onToggle={(id) =>
-                  setSelected((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id]))
+                  setSelected((current) =>
+                    current.includes(id) ? current.filter((item) => item !== id) : [...current, id],
+                  )
                 }
                 onTogglePage={(checked) => {
-                  const pageIds = pageRows.map((row) => row.id)
+                  const pageIds = companies.map((row) => row.id)
                   setSelected((current) =>
-                    checked ? [...new Set([...current, ...pageIds])] : current.filter((id) => !pageIds.includes(id)),
+                    checked
+                      ? [...new Set([...current, ...pageIds])]
+                      : current.filter((id) => !pageIds.includes(id)),
                   )
                 }}
                 onOpen={(company: Company) => setOpenId(company.id)}
               />
-              <div className="mt-4 flex flex-col gap-3 text-sm text-slate-500 sm:flex-row sm:items-center sm:justify-between">
+              <div className="mt-4 flex flex-col gap-3 text-sm text-muted sm:flex-row sm:items-center sm:justify-between">
                 <p>
-                  {safePage * PAGE_SIZE + 1}–{Math.min(sorted.length, safePage * PAGE_SIZE + PAGE_SIZE)} di {sorted.length}
+                  {total === 0
+                    ? '0'
+                    : `${safePage * PAGE_SIZE + 1}–${Math.min(total, safePage * PAGE_SIZE + PAGE_SIZE)} di ${total}`}
                 </p>
                 <div className="flex gap-2">
                   <Button variant="secondary" disabled={safePage === 0} onClick={() => setPage(safePage - 1)}>
@@ -262,26 +280,22 @@ export function AziendePage() {
       )}
 
       <CompanyDrawer company={openCompany} people={people} profile={profile} onClose={() => setOpenId(null)} />
-      {isAdmin ? (
-        <>
-          <CompanyFormModal open={createOpen} profile={profile} people={people} onClose={() => setCreateOpen(false)} />
-          <ImportCompaniesModal
-            open={importOpen}
-            profile={profile}
-            companies={companies}
-            onClose={() => setImportOpen(false)}
-          />
-          <CompanyBulkDialogs
-            action={bulk}
-            companies={companies}
-            people={people}
-            profile={profile}
-            selectedIds={selected}
-            onClose={() => setBulk(null)}
-            onDone={() => setSelected([])}
-          />
-        </>
-      ) : null}
+      <CompanyFormModal open={createOpen} profile={profile} people={people} onClose={() => setCreateOpen(false)} />
+      <ImportCompaniesModal
+        open={importOpen}
+        profile={profile}
+        companies={companies}
+        onClose={() => setImportOpen(false)}
+      />
+      <CompanyBulkDialogs
+        action={bulk}
+        companies={companies}
+        people={people}
+        profile={profile}
+        selectedIds={selected}
+        onClose={() => setBulk(null)}
+        onDone={() => setSelected([])}
+      />
     </section>
   )
 }

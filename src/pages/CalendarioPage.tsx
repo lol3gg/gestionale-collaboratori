@@ -74,7 +74,10 @@ export function CalendarioPage() {
   )
   const canGoPrev = weekStart.getTime() > currentWeekStart.getTime()
   const companies = useMemo(
-    () => [...(companiesQuery.data ?? [])].sort((left, right) => left.name.localeCompare(right.name, 'it')),
+    () =>
+      [...(companiesQuery.data?.companies ?? [])].sort((left, right) =>
+        left.name.localeCompare(right.name, 'it'),
+      ),
     [companiesQuery.data],
   )
   const preferredCompany = companies.find((item) => item.id === preferredCompanyId) ?? null
@@ -163,7 +166,7 @@ export function CalendarioPage() {
       ) : null}
 
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-sm font-medium text-slate-700">{range}</p>
+        <p className="text-sm font-medium text-ink">{range}</p>
         <div className="flex flex-wrap gap-2">
           <Button
             variant="secondary"
@@ -227,7 +230,7 @@ export function CalendarioPage() {
                   const clock = `${formatClock(slot.startMin)}–${formatClock(slot.endMin)}`
                   const mine = booking?.user_id === profile.id
                   const person = people.find((item) => item.id === booking?.user_id)
-                  const company = companiesQuery.data?.find((item) => item.id === booking?.company_id)
+                  const company = companiesQuery.data?.companies.find((item) => item.id === booking?.company_id)
                   const canSeeDetails = Boolean(booking && (isAdmin || mine))
                   const canCancel = Boolean(booking && (isAdmin || mine))
                   return (
@@ -321,7 +324,7 @@ export function CalendarioPage() {
         }
       >
         {companies.length === 0 ? (
-          <p className="text-sm text-slate-600">Non hai aziende da associare alla call.</p>
+          <p className="text-sm text-muted">Non hai aziende da associare alla call.</p>
         ) : (
           <Select label="Azienda" value={companyId} onChange={(event) => setCompanyId(event.target.value)}>
             {companies.map((company) => (

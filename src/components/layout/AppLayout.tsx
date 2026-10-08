@@ -1,4 +1,5 @@
 import { Outlet } from 'react-router-dom'
+import { CallbackReminder } from '../calls/CallbackReminder'
 import { BottomNav } from './BottomNav'
 import { Header } from './Header'
 import { PageTitleProvider } from './PageTitleContext'
@@ -16,6 +17,7 @@ export function AppLayout() {
           </main>
         </div>
         <BottomNav />
+        <CallbackReminder />
       </div>
     </PageTitleProvider>
   )

@@ -1,6 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useToast } from '../components/ui/Toast'
-import { claimCompany, getCallLogs, getCallQueue, queryKeys, recordCallOutcome, releaseCompany, undoCall } from '../lib/api'
+import {
+  claimCompany,
+  getCallLogs,
+  getCallQueue,
+  queryKeys,
+  recordCallOutcome,
+  releaseCompany,
+  undoCall,
+  type CallQueueParams,
+} from '../lib/api'
 import { errorMessage } from '../lib/validators'
 import type { Actor, CallOutcomeInput, Profile } from '../types'
 
@@ -16,17 +25,23 @@ function useRefreshCalls() {
     await queryClient.invalidateQueries({ queryKey: ['call-queue'] })
     await queryClient.invalidateQueries({ queryKey: ['call-logs'] })
     await queryClient.invalidateQueries({ queryKey: queryKeys.collaborators })
+    await queryClient.invalidateQueries({ queryKey: queryKeys.bookings })
   }
 }
 
-export function useCallQueue(profile: Profile | null) {
+function isConflict(error: unknown): boolean {
+  const message = errorMessage(error).toLowerCase()
+  return message.includes('già assegnata') || message.includes('gia assegnata')
+}
+
+export function useCallQueue(profile: Profile | null, params?: CallQueueParams) {
   return useQuery({
-    queryKey: queryKeys.callQueue(profile?.id ?? 'none'),
+    queryKey: queryKeys.callQueue(profile?.id ?? 'none', params),
     queryFn: () => {
       if (!profile) throw new Error('Sessione non disponibile')
-      return getCallQueue(toActor(profile))
+      return getCallQueue(toActor(profile), params)
     },
-    enabled: profile !== null,
+    enabled: profile !== null && Boolean(params),
   })
 }
 
@@ -52,7 +67,10 @@ export function useRecordCall(profile: Profile | null) {
     onSuccess: async () => {
       await refresh()
     },
-    onError: (error) => toast.error(errorMessage(error)),
+    onError: async (error) => {
+      toast.error(errorMessage(error))
+      if (isConflict(error)) await refresh()
+    },
   })
 }
 
@@ -84,7 +102,10 @@ export function useClaimCompany(profile: Profile | null) {
       await refresh()
       toast.success('Azienda presa in carico')
     },
-    onError: (error) => toast.error(errorMessage(error)),
+    onError: async (error) => {
+      toast.error(errorMessage(error))
+      if (isConflict(error)) await refresh()
+    },
   })
 }
 

@@ -6,7 +6,7 @@ import {
   useUpdateCollaborator,
 } from '../../hooks/useCollaborators'
 import type { FieldErrors } from '../../lib/validators'
-import { validateEmail, validateFullName, validateRole } from '../../lib/validators'
+import { validateEmail, validateFullName, validatePassword, validateRole } from '../../lib/validators'
 import type { Collaborator, UserRole } from '../../types'
 import { Button } from '../ui/Button'
 import { Input, Select } from '../ui/Input'
@@ -20,6 +20,7 @@ export function CreateCollaboratorModal({ open, onClose }: { open: boolean; onCl
   const create = useCreateCollaborator()
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
   const [role, setRole] = useState<UserRole>('collaboratore')
   const [errors, setErrors] = useState<FieldErrors>({})
 
@@ -27,6 +28,7 @@ export function CreateCollaboratorModal({ open, onClose }: { open: boolean; onCl
     if (!open) return
     setFullName('')
     setEmail('')
+    setPassword('')
     setRole('collaboratore')
     setErrors({})
   }, [open])
@@ -41,9 +43,11 @@ export function CreateCollaboratorModal({ open, onClose }: { open: boolean; onCl
     const nextErrors: FieldErrors = {}
     const nameError = validateFullName(fullName)
     const emailError = validateEmail(email)
+    const passwordError = validatePassword(password)
     const nextRole = validateRole(role)
     if (nameError) nextErrors.full_name = nameError
     if (emailError) nextErrors.email = emailError
+    if (passwordError) nextErrors.password = passwordError
     if (!nextRole) nextErrors.role = 'Seleziona un ruolo valido'
     setErrors(nextErrors)
     if (hasErrors(nextErrors) || !nextRole) return
@@ -52,6 +56,7 @@ export function CreateCollaboratorModal({ open, onClose }: { open: boolean; onCl
       await create.mutateAsync({
         full_name: fullName.trim(),
         email: email.trim().toLowerCase(),
+        password,
         role: nextRole,
       })
       onClose()
@@ -79,6 +84,14 @@ export function CreateCollaboratorModal({ open, onClose }: { open: boolean; onCl
       <form id="create-collaborator" className="space-y-4" onSubmit={(event) => void submit(event)} noValidate>
         <Input label="Nome completo" value={fullName} onChange={(event) => setFullName(event.target.value)} error={errors.full_name} autoComplete="name" />
         <Input label="Email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} error={errors.email} autoComplete="off" />
+        <Input
+          label="Password"
+          type="password"
+          value={password}
+          onChange={(event) => setPassword(event.target.value)}
+          error={errors.password}
+          autoComplete="new-password"
+        />
         <Select label="Ruolo" value={role} onChange={(event) => setRole(event.target.value === 'admin' ? 'admin' : 'collaboratore')} error={errors.role}>
           <option value="collaboratore">Collaboratore</option>
           <option value="admin">Amministratore</option>
@@ -102,14 +115,18 @@ export function EditCollaboratorModal({
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
   const [role, setRole] = useState<UserRole>('collaboratore')
+  const [dailyGoal, setDailyGoal] = useState('30')
   const [errors, setErrors] = useState<FieldErrors>({})
+  const [goalError, setGoalError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!collaborator) return
     setFullName(collaborator.full_name)
     setEmail(collaborator.email)
     setRole(collaborator.role)
+    setDailyGoal(String(collaborator.daily_goal ?? 30))
     setErrors({})
+    setGoalError(null)
   }, [collaborator])
 
   const requestClose = () => {
@@ -124,11 +141,17 @@ export function EditCollaboratorModal({
     const nameError = validateFullName(fullName)
     const emailError = validateEmail(email)
     const nextRole = self ? collaborator.role : validateRole(role)
+    const goalNum = Number(dailyGoal)
+    let nextGoalError: string | null = null
+    if (!Number.isInteger(goalNum) || goalNum < 1 || goalNum > 500) {
+      nextGoalError = 'Inserisci un obiettivo tra 1 e 500'
+    }
     if (nameError) nextErrors.full_name = nameError
     if (emailError) nextErrors.email = emailError
     if (!nextRole) nextErrors.role = 'Seleziona un ruolo valido'
     setErrors(nextErrors)
-    if (hasErrors(nextErrors) || !nextRole) return
+    setGoalError(nextGoalError)
+    if (hasErrors(nextErrors) || !nextRole || nextGoalError) return
 
     try {
       await update.mutateAsync({
@@ -137,6 +160,7 @@ export function EditCollaboratorModal({
         full_name: fullName.trim(),
         email: email.trim().toLowerCase(),
         role: nextRole,
+        daily_goal: goalNum,
       })
       onClose()
     } catch {
@@ -174,6 +198,15 @@ export function EditCollaboratorModal({
           <option value="collaboratore">Collaboratore</option>
           <option value="admin">Amministratore</option>
         </Select>
+        <Input
+          label="Obiettivo chiamate / giorno"
+          type="number"
+          min={1}
+          max={500}
+          value={dailyGoal}
+          onChange={(event) => setDailyGoal(event.target.value)}
+          error={goalError ?? undefined}
+        />
       </form>
     </Modal>
   )
@@ -232,7 +265,7 @@ export function ActiveCollaboratorModal({
         </>
       }
     >
-      <p className="text-sm text-slate-600">
+      <p className="text-sm text-muted">
         {turningOff ? 'L’account risulterà disattivo.' : 'L’account tornerà attivo.'}
       </p>
     </Modal>

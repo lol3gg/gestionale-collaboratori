@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ChevronDown, Phone } from 'lucide-react'
+import { ChevronDown } from 'lucide-react'
+import { isCallbackOverdue } from '../../lib/callbacks'
 import { attemptsToday, companyCallHistory, latestUndoableLog } from '../../lib/calls'
 import { websiteHref, websiteLabel } from '../../lib/companies'
 import { formatDateTime } from '../../lib/format'
@@ -13,6 +14,9 @@ import { Button } from '../ui/Button'
 import { Drawer } from '../ui/Drawer'
 import { Modal } from '../ui/Modal'
 import { Select } from '../ui/Input'
+import { CompanyContactActions } from './CompanyContactActions'
+import { CLAIM_LIMIT } from '../../lib/api'
+import { outcomeButtonClass, statusEdgeClass } from '../../lib/statusColors'
 
 const OUTCOMES: { outcome: CompanyStatus; label: string }[] = [
   { outcome: 'non_risponde', label: 'Non risponde' },
@@ -29,8 +33,10 @@ type CallCardProps = {
   note: string
   busy: boolean
   mode?: 'admin' | 'collaborator'
+  claimedCount?: number
+  claimLimit?: number
   onNote: (value: string) => void
-  onOutcome: (outcome: CompanyStatus) => void
+  onOutcome: (outcome: CompanyStatus) => void | Promise<unknown>
   onCallback: () => void
   onClaim?: () => void
   onAssign?: (assigneeId: string) => void
@@ -46,9 +52,12 @@ export function CallCard({
   note,
   busy,
   mode = 'admin',
+  claimedCount = 0,
+  claimLimit = CLAIM_LIMIT,
   onNote,
   onOutcome,
   onCallback,
+  onClaim,
   onAssign,
   onRelease,
   onUndo,
@@ -57,6 +66,7 @@ export function CallCard({
   const [menuOpen, setMenuOpen] = useState(false)
   const [detailOpen, setDetailOpen] = useState(false)
   const [acceptOpen, setAcceptOpen] = useState(false)
+  const [historyOpen, setHistoryOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
   const menuId = useId()
   const attempts = attemptsToday(company.id, logs)
@@ -80,11 +90,17 @@ export function CallCard({
   }
 
   const confirmAccept = () => {
-    setAcceptOpen(false)
-    setDetailOpen(false)
-    setMenuOpen(false)
-    onOutcome('accettato')
-    void navigate(`/calendario?companyId=${encodeURIComponent(company.id)}`)
+    void (async () => {
+      try {
+        await onOutcome('accettato')
+        setAcceptOpen(false)
+        setDetailOpen(false)
+        setMenuOpen(false)
+        void navigate(`/calendario?companyId=${encodeURIComponent(company.id)}`)
+      } catch {
+        // Resta sulla pagina: l'errore è già mostrato dal toast della mutation
+      }
+    })()
   }
 
   useEffect(() => {
@@ -112,10 +128,21 @@ export function CallCard({
       })),
       { key: 'da_richiamare', label: 'Da richiamare', onClick: onCallback },
     ]
+    const overdue = isCallbackOverdue(company.callback_at)
+    const lastNote = company.notes[0] ?? null
+    const inPool = company.assignee_id === null
+    const mine = company.assignee_id === profile.id
+    const canRelease = mine && history.length === 0 && Boolean(onRelease)
+    const atClaimLimit = claimedCount >= claimLimit
+    const canClaim = inPool && Boolean(onClaim)
 
     return (
       <>
-        <article className="rounded-xl border border-line bg-surface p-3 shadow-card ring-1 ring-slate-900/[0.03] md:p-3.5">
+        <article
+          className={`rounded-xl border bg-surface p-3 shadow-card md:p-3.5 ${statusEdgeClass[company.status]} ${
+            overdue ? 'border-danger-dot/50' : 'border-line'
+          }`}
+        >
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
               <h2 className="truncate text-[15px] font-semibold tracking-tight text-ink md:text-base">
@@ -125,16 +152,30 @@ export function CallCard({
                 {company.city} ({company.province})
               </p>
             </div>
-            <CompanyStatusBadge status={company.status} />
+            <div className="flex shrink-0 flex-col items-end gap-1">
+              <CompanyStatusBadge status={company.status} />
+              {overdue ? (
+                <span className="rounded-full bg-danger-bg px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-danger-fg">
+                  In ritardo
+                </span>
+              ) : null}
+            </div>
           </div>
 
           {company.phone ? (
-            <p className="mt-2 truncate text-[15px] font-semibold tabular-nums text-emerald-600 md:text-base">
+            <p className="mt-2 truncate text-[15px] font-semibold tabular-nums text-ink md:text-base">
               {company.phone}
             </p>
           ) : (
             <p className="mt-2 text-[13px] text-muted">Nessun telefono</p>
           )}
+
+          {lastNote ? (
+            <p className="mt-2 line-clamp-2 rounded-lg bg-canvas px-2.5 py-1.5 text-[13px] text-ink">
+              <span className="font-semibold text-muted">Nota · </span>
+              {lastNote.body}
+            </p>
+          ) : null}
 
           {attempts > 0 ? (
             <p className="mt-1 text-xs font-medium text-muted">Tentativo n. {attempts}</p>
@@ -155,85 +196,85 @@ export function CallCard({
           description={`${company.city} (${company.province}) · ${company.region}`}
           onClose={() => {
             setMenuOpen(false)
+            setHistoryOpen(false)
             setDetailOpen(false)
           }}
         >
           <div className="space-y-4">
             <div className="flex flex-wrap items-center gap-2">
               <CompanyStatusBadge status={company.status} />
+              {overdue ? (
+                <span className="rounded-full bg-danger-bg px-2.5 py-1 text-xs font-semibold text-danger-fg">
+                  In ritardo
+                </span>
+              ) : null}
               {attempts > 0 ? (
                 <span className="rounded-full bg-quiet-bg px-2.5 py-1 text-xs font-semibold text-quiet-fg">
                   Tentativo n. {attempts}
                 </span>
               ) : null}
-              {company.assignee_id === null ? (
+              {inPool ? (
                 <span className="rounded-full bg-quiet-bg px-2.5 py-1 text-xs font-medium text-quiet-fg">Nel pool</span>
-              ) : (
+              ) : mine ? (
                 <span className="rounded-full bg-primary-50 px-2.5 py-1 text-xs font-medium text-primary-700">
                   Assegnata a te
                 </span>
-              )}
+              ) : null}
             </div>
 
             <dl className="grid gap-3 text-[15px]">
               <div>
-                <dt className="text-xs font-semibold uppercase tracking-[0.06em] text-muted">Telefono</dt>
-                <dd className="mt-1">
-                  {company.phone ? (
-                    <span className="font-semibold tabular-nums text-emerald-600">{company.phone}</span>
-                  ) : (
-                    '—'
-                  )}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-xs font-semibold uppercase tracking-[0.06em] text-muted">Email</dt>
-                <dd className="mt-1 break-all text-ink">
-                  {company.email ? (
-                    <a href={`mailto:${company.email}`} className="text-primary-700 hover:underline">
-                      {company.email}
-                    </a>
-                  ) : (
-                    '—'
-                  )}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-xs font-semibold uppercase tracking-[0.06em] text-muted">Sito</dt>
-                <dd className="mt-1 break-all text-ink">
-                  {site ? (
-                    <a href={site} target="_blank" rel="noreferrer" className="text-primary-700 hover:underline">
-                      {websiteLabel(company.website)}
-                    </a>
-                  ) : (
-                    '—'
-                  )}
-                </dd>
+                <dt className="text-xs font-semibold uppercase tracking-[0.06em] text-muted">Dipendenti</dt>
+                <dd className="mt-1 tabular-nums text-ink">{company.employees ?? '—'}</dd>
               </div>
               <div>
                 <dt className="text-xs font-semibold uppercase tracking-[0.06em] text-muted">Indirizzo</dt>
                 <dd className="mt-1 text-ink">{company.address || '—'}</dd>
               </div>
-              <div>
-                <dt className="text-xs font-semibold uppercase tracking-[0.06em] text-muted">Dipendenti</dt>
-                <dd className="mt-1 tabular-nums text-ink">{company.employees ?? '—'}</dd>
-              </div>
               {company.callback_at ? (
                 <div>
                   <dt className="text-xs font-semibold uppercase tracking-[0.06em] text-muted">Richiamo</dt>
-                  <dd className="mt-1 text-ink">{formatDateTime(company.callback_at)}</dd>
+                  <dd className={`mt-1 ${overdue ? 'font-semibold text-danger-fg' : 'text-ink'}`}>
+                    {formatDateTime(company.callback_at)}
+                  </dd>
                 </div>
               ) : null}
             </dl>
 
-            {phoneLink ? (
-              <a
-                href={phoneLink}
-                className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 text-base font-semibold tracking-tight text-white shadow-sm transition duration-150 hover:bg-emerald-700 active:scale-[0.98]"
-              >
-                <Phone className="h-5 w-5" aria-hidden="true" />
-                Chiama {company.phone}
-              </a>
+            <CompanyContactActions phone={company.phone} email={company.email} website={company.website} />
+
+            {canClaim ? (
+              <div>
+                <Button
+                  className="min-h-12 w-full"
+                  disabled={busy || atClaimLimit}
+                  onClick={() => onClaim?.()}
+                >
+                  Prendi in carico
+                </Button>
+                {atClaimLimit ? (
+                  <p className="mt-1.5 text-sm text-muted">
+                    Hai raggiunto il limite di {claimLimit} aziende in carico. Rilascia o chiudi alcune schede
+                    prima di prenderne altre.
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
+
+            {canRelease ? (
+              <Button variant="secondary" className="min-h-11 w-full border border-line" disabled={busy} onClick={() => onRelease?.()}>
+                Rilascia nel pool
+              </Button>
+            ) : null}
+
+            {lastNote ? (
+              <div className="rounded-xl bg-primary-50/70 px-3 py-2.5 dark:bg-primary-100/40">
+                <p className="text-xs font-semibold uppercase tracking-[0.06em] text-primary-700">Ultima nota</p>
+                <p className="mt-1 text-[15px] text-ink">{lastNote.body}</p>
+                <p className="mt-1 text-xs text-muted">
+                  {lastNote.author_name} · {formatDateTime(lastNote.created_at)}
+                </p>
+              </div>
             ) : null}
 
             <div>
@@ -279,7 +320,17 @@ export function CallCard({
                       type="button"
                       role="menuitem"
                       disabled={busy}
-                      className="flex min-h-12 w-full items-center px-4 text-left text-[15px] font-medium text-ink transition-colors duration-150 hover:bg-canvas disabled:opacity-60"
+                      className={`flex min-h-12 w-full items-center px-4 text-left text-[15px] font-semibold transition-colors duration-150 hover:bg-canvas disabled:opacity-60 ${
+                        action.key === 'accettato'
+                          ? 'text-success-fg'
+                          : action.key === 'rifiutato'
+                            ? 'text-danger-fg'
+                            : action.key === 'da_richiamare'
+                              ? 'text-violet-fg'
+                              : action.key === 'non_risponde'
+                                ? 'text-warning-fg'
+                                : 'text-ink'
+                      }`}
                       onClick={() => {
                         setMenuOpen(false)
                         action.onClick()
@@ -299,25 +350,43 @@ export function CallCard({
             ) : null}
 
             <div className="border-t border-line pt-4">
-              <h3 className="text-sm font-semibold text-ink">Storico chiamate</h3>
-              {history.length === 0 ? (
-                <p className="mt-1 text-[15px] text-muted">Nessuna chiamata registrata.</p>
-              ) : (
-                <ul className="mt-2 space-y-2">
-                  {history.map((log) => (
-                    <li key={log.id} className="rounded-xl bg-canvas px-3 py-2 text-[15px] text-ink">
-                      <p className="font-medium text-ink">
-                        {statusLabel(log.outcome)}
-                        <span className="ml-2 font-normal text-muted">{formatDateTime(log.created_at)}</span>
-                      </p>
-                      {log.note ? <p className="mt-0.5 text-muted">{log.note}</p> : null}
-                      {log.callback_at ? (
-                        <p className="mt-0.5 text-xs text-muted">Richiamo {formatDateTime(log.callback_at)}</p>
-                      ) : null}
-                    </li>
-                  ))}
-                </ul>
-              )}
+              <button
+                type="button"
+                className="flex w-full items-center justify-between text-left"
+                onClick={() => setHistoryOpen((open) => !open)}
+              >
+                <h3 className="text-sm font-semibold text-ink">Storico chiamate ({history.length})</h3>
+                <ChevronDown
+                  className={`h-4 w-4 text-muted transition-transform ${historyOpen ? 'rotate-180' : ''}`}
+                  aria-hidden="true"
+                />
+              </button>
+              {historyOpen ? (
+                history.length === 0 ? (
+                  <p className="mt-2 text-[15px] text-muted">Nessuna chiamata registrata.</p>
+                ) : (
+                  <ul className="mt-2 space-y-2">
+                    {history.map((log) => {
+                      const caller = people.find((person) => person.id === log.user_id)
+                      return (
+                        <li key={log.id} className="rounded-xl bg-canvas px-3 py-2 text-[15px] text-ink">
+                          <p className="font-medium text-ink">
+                            {statusLabel(log.outcome)}
+                            <span className="ml-2 font-normal text-muted">{formatDateTime(log.created_at)}</span>
+                          </p>
+                          <p className="mt-0.5 text-xs text-muted">
+                            {caller?.full_name ?? 'Collaboratore'}
+                          </p>
+                          {log.note ? <p className="mt-0.5 text-muted">{log.note}</p> : null}
+                          {log.callback_at ? (
+                            <p className="mt-0.5 text-xs text-muted">Richiamo {formatDateTime(log.callback_at)}</p>
+                          ) : null}
+                        </li>
+                      )
+                    })}
+                  </ul>
+                )
+              ) : null}
             </div>
           </div>
         </Drawer>
@@ -348,7 +417,7 @@ export function CallCard({
 
   return (
     <>
-      <article className="card-surface p-4">
+      <article className={`card-surface p-4 ${statusEdgeClass[company.status]}`}>
         <div className="flex flex-wrap items-start justify-between gap-2">
           <div className="min-w-0">
             <h2 className="break-words text-base font-semibold tracking-tight text-ink">{company.name}</h2>
@@ -366,9 +435,15 @@ export function CallCard({
           </div>
         </div>
 
-        <a href={phoneLink} className="mt-2 block break-words text-lg font-semibold text-primary-700 hover:underline">
-          {company.phone}
-        </a>
+        <p className="mt-2 break-words text-lg font-semibold tabular-nums text-ink">{company.phone || '—'}</p>
+        {phoneLink ? (
+          <a
+            href={phoneLink}
+            className="btn-primary-solid mt-2 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 text-sm font-semibold"
+          >
+            Chiama
+          </a>
+        ) : null}
 
         <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-[13px] text-muted">
           {site ? (
@@ -399,7 +474,7 @@ export function CallCard({
             <Button
               key={item.outcome}
               variant="secondary"
-              className="min-h-11 w-full px-2 text-sm sm:w-auto"
+              className={`w-full sm:w-auto ${outcomeButtonClass(item.outcome)}`}
               disabled={busy}
               onClick={() => handleOutcome(item.outcome)}
             >
@@ -408,7 +483,7 @@ export function CallCard({
           ))}
           <Button
             variant="secondary"
-            className="col-span-2 min-h-11 w-full text-sm sm:w-auto"
+            className={`col-span-2 w-full sm:w-auto ${outcomeButtonClass('da_richiamare')}`}
             disabled={busy}
             onClick={onCallback}
           >

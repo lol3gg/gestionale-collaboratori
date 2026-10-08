@@ -139,19 +139,19 @@ export function ImportCompaniesModal({ open, profile, companies, onClose }: Impo
             <Button variant="secondary" onClick={() => inputRef.current?.click()}>
               Scegli file
             </Button>
-            <a href="/esempio-aziende.csv" download className="text-sm font-medium text-indigo-700 hover:underline">
+            <a href="/esempio-aziende.csv" download className="text-sm font-medium text-primary-700 hover:underline">
               Scarica il CSV di esempio
             </a>
-            {fileName ? <span className="text-sm text-slate-500">{fileName}</span> : null}
+            {fileName ? <span className="text-sm text-muted">{fileName}</span> : null}
           </div>
 
           {table ? (
             <>
               <div>
-                <h3 className="mb-2 text-sm font-semibold text-slate-900">Anteprima</h3>
-                <div className="overflow-x-auto rounded-xl border border-slate-200">
+                <h3 className="mb-2 text-sm font-semibold text-ink">Anteprima</h3>
+                <div className="overflow-x-auto rounded-xl border border-line">
                   <table className="min-w-full text-left text-xs">
-                    <thead className="bg-slate-50 text-slate-500">
+                    <thead className="bg-canvas text-muted">
                       <tr>
                         {table.headers.map((header) => (
                           <th key={header} className="whitespace-nowrap px-3 py-2 font-medium">
@@ -162,9 +162,9 @@ export function ImportCompaniesModal({ open, profile, companies, onClose }: Impo
                     </thead>
                     <tbody>
                       {preview.map((row) => (
-                        <tr key={row.line} className="border-t border-slate-100">
+                        <tr key={row.line} className="border-t border-line">
                           {table.headers.map((header, index) => (
-                            <td key={`${row.line}-${header}`} className="whitespace-nowrap px-3 py-2 text-slate-700">
+                            <td key={`${row.line}-${header}`} className="whitespace-nowrap px-3 py-2 text-ink">
                               {row.cells[index] || '—'}
                             </td>
                           ))}
@@ -173,7 +173,7 @@ export function ImportCompaniesModal({ open, profile, companies, onClose }: Impo
                     </tbody>
                   </table>
                 </div>
-                <p className="mt-2 text-xs text-slate-500">
+                <p className="mt-2 text-xs text-muted">
                   Prime {preview.length} righe di {table.rows.length}.
                 </p>
               </div>
@@ -196,33 +196,33 @@ export function ImportCompaniesModal({ open, profile, companies, onClose }: Impo
               </div>
             </>
           ) : (
-            <p className="text-sm text-slate-500">Nessun file selezionato. Il separatore può essere il punto e virgola o la virgola.</p>
+            <p className="text-sm text-muted">Nessun file selezionato. Il separatore può essere il punto e virgola o la virgola.</p>
           )}
         </div>
       ) : null}
 
       {step === 'review' && prepared ? (
         <div className="space-y-5">
-          <p className="text-sm text-slate-600">
+          <p className="text-sm text-muted">
             {prepared.rows.length} righe pronte, {prepared.duplicates.length} doppioni, {prepared.errors.length} errori.
           </p>
           <fieldset className="space-y-2">
-            <legend className="text-sm font-medium text-slate-700">Doppioni</legend>
-            <label className="flex items-center gap-2 text-sm text-slate-700">
+            <legend className="text-sm font-medium text-ink">Doppioni</legend>
+            <label className="flex items-center gap-2 text-sm text-ink">
               <input type="radio" name="policy" checked={policy === 'skip'} onChange={() => setPolicy('skip')} />
               Salta
             </label>
-            <label className="flex items-center gap-2 text-sm text-slate-700">
+            <label className="flex items-center gap-2 text-sm text-ink">
               <input type="radio" name="policy" checked={policy === 'update'} onChange={() => setPolicy('update')} />
               Aggiorna i dati anagrafici
             </label>
           </fieldset>
           {prepared.duplicates.length === 0 ? (
-            <p className="text-sm text-slate-500">Nessun doppione rispetto alle aziende già presenti.</p>
+            <p className="text-sm text-muted">Nessun doppione rispetto alle aziende già presenti.</p>
           ) : (
             <ul className="max-h-48 space-y-2 overflow-y-auto text-sm">
               {prepared.duplicates.map((item) => (
-                <li key={`${item.line}-${item.reason}`} className="rounded-lg bg-amber-50 px-3 py-2 text-amber-950">
+                <li key={`${item.line}-${item.reason}`} className="rounded-lg bg-warning-bg px-3 py-2 text-warning-fg">
                   Riga {item.line}: {item.name}. {duplicateReasonLabel(item.reason)} di {item.matchName}
                   {item.matchCity ? ` (${item.matchCity})` : ''}.
                 </li>
@@ -258,7 +258,7 @@ export function ImportCompaniesModal({ open, profile, companies, onClose }: Impo
               ))}
             </ul>
           ) : (
-            <p className="text-sm text-slate-500">Nessun errore nelle righe inviate.</p>
+            <p className="text-sm text-muted">Nessun errore nelle righe inviate.</p>
           )}
         </div>
       ) : null}
@@ -268,9 +268,9 @@ export function ImportCompaniesModal({ open, profile, companies, onClose }: Impo
 
 function Summary({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-xl border border-slate-200 px-3 py-3">
-      <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</dt>
-      <dd className="mt-1 text-2xl font-semibold text-slate-900">{value}</dd>
+    <div className="rounded-xl border border-line px-3 py-3">
+      <dt className="text-xs font-medium uppercase tracking-wide text-muted">{label}</dt>
+      <dd className="mt-1 text-2xl font-semibold text-ink">{value}</dd>
     </div>
   )
 }

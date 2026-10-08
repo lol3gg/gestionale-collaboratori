@@ -1,17 +1,16 @@
 import type { ReactNode } from 'react'
 
-export type BadgeVariant = 'success' | 'neutral' | 'danger' | 'info' | 'warning' | 'accent' | 'yellow' | 'orange' | 'dark'
+export type BadgeVariant = 'success' | 'quiet' | 'neutral' | 'danger' | 'info' | 'warning' | 'violet' | 'accent'
 
 const variants: Record<BadgeVariant, { wrap: string; dot: string }> = {
   success: { wrap: 'bg-success-bg text-success-fg', dot: 'bg-success-dot' },
+  quiet: { wrap: 'bg-quiet-bg text-quiet-fg', dot: 'bg-quiet-dot' },
   neutral: { wrap: 'bg-quiet-bg text-quiet-fg', dot: 'bg-quiet-dot' },
   danger: { wrap: 'bg-danger-bg text-danger-fg', dot: 'bg-danger-dot' },
   info: { wrap: 'bg-primary-50 text-primary-700', dot: 'bg-primary-500' },
   warning: { wrap: 'bg-warning-bg text-warning-fg', dot: 'bg-warning-dot' },
+  violet: { wrap: 'bg-violet-bg text-violet-fg', dot: 'bg-violet-dot' },
   accent: { wrap: 'bg-primary-50 text-primary-700', dot: 'bg-primary-500' },
-  yellow: { wrap: 'bg-quiet-bg text-quiet-fg', dot: 'bg-quiet-dot' },
-  orange: { wrap: 'bg-warning-bg text-warning-fg', dot: 'bg-warning-dot' },
-  dark: { wrap: 'bg-dark-bg text-dark-fg', dot: 'bg-dark-dot' },
 }
 
 export function Badge({

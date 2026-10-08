@@ -145,7 +145,7 @@ export function CompanyBulkDialogs({
           </>
         }
       >
-        <p className="text-sm text-slate-600">
+        <p className="text-sm text-muted">
           {preview.join(', ')}
           {extra > 0 ? ` e altre ${extra}` : ''}.
         </p>

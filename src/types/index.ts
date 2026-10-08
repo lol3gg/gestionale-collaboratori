@@ -17,6 +17,7 @@ export type Profile = {
   email: string
   role: UserRole
   active: boolean
+  daily_goal: number
   created_at: string
 }
 
@@ -39,6 +40,7 @@ export type UpdateCollaboratorInput = {
   user_id: string
   full_name: string
   role: UserRole
+  daily_goal?: number
 }
 
 export type SetActiveInput = {
@@ -55,6 +57,8 @@ export type CollaboratorDraft = {
   full_name: string
   email: string
   role: UserRole
+  password?: string
+  daily_goal?: number
 }
 
 export type Actor = {
@@ -118,6 +122,17 @@ export type CallOutcomeInput = {
 export type CallQueue = {
   companies: Company[]
   logs: CallLog[]
+  total: number
+  counts: {
+    da_chiamare: number
+    da_riprovare: number
+    da_richiamare: number
+    mie: number
+    chiusi: number
+  }
+  regions: string[]
+  provinces: string[]
+  cities: string[]
 }
 
 export type ExplanationBooking = {
@@ -150,6 +165,35 @@ export type CompanyFilter = {
   assigneeId?: string
 }
 
+export type CompanyListParams = {
+  search?: string
+  status?: CompanyStatus | 'all'
+  region?: string
+  province?: string
+  assignee?: string
+  phone?: 'all' | 'yes' | 'no'
+  sortKey?:
+    | 'name'
+    | 'city'
+    | 'province'
+    | 'phone'
+    | 'website'
+    | 'email'
+    | 'employees'
+    | 'status'
+    | 'assignee'
+    | 'created_at'
+  sortDir?: 'asc' | 'desc'
+  page?: number
+  pageSize?: number
+  assigneeId?: string
+}
+
+export type CompanyListResult = {
+  companies: Company[]
+  total: number
+}
+
 export type DashboardViewer = {
   id: string
   role: UserRole
@@ -161,13 +205,29 @@ export type CallRankingRow = {
   accepted: number
 }
 
+export type DashboardCallbackItem = {
+  id: string
+  name: string
+  callback_at: string
+  phone?: string
+}
+
 export type DashboardStats = {
   total: number
   assigned: number
   byStatus: { status: CompanyStatus; count: number }[]
   callsToday: number
   callsThisWeek: number
+  acceptedToday: number
+  rejectedToday: number
+  acceptanceRate30d: number | null
+  dailyGoal: number
+  claimedCount: number
+  claimLimit: number
   ranking: CallRankingRow[]
+  callbacksOverdue: DashboardCallbackItem[]
+  callbacksToday: DashboardCallbackItem[]
+  callbacksDueCount: number
 }
 
 export type DuplicatePolicy = 'skip' | 'update'

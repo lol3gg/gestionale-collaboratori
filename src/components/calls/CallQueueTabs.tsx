@@ -17,7 +17,7 @@ export function CallQueueTabs({ tab, counts, onChange }: CallQueueTabsProps) {
             type="button"
             className={`min-h-11 shrink-0 rounded-full px-4 py-2 text-[15px] font-medium transition-all duration-200 ${
               selected
-                ? 'btn-primary-glow shadow-sm'
+                ? 'btn-primary-solid shadow-sm'
                 : 'bg-surface text-ink ring-1 ring-line hover:bg-canvas hover:ring-primary-200'
             }`}
             onClick={() => onChange(item.id)}

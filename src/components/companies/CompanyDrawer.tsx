@@ -38,8 +38,8 @@ function toForm(company: Company): CompanyFormInput {
 function Field({ label, children }: { label: string; children: string }) {
   return (
     <div>
-      <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</dt>
-      <dd className="mt-1 text-sm text-slate-900">{children || '—'}</dd>
+      <dt className="text-xs font-medium uppercase tracking-wide text-muted">{label}</dt>
+      <dd className="mt-1 text-sm text-ink">{children || '—'}</dd>
     </div>
   )
 }
@@ -122,10 +122,10 @@ export function CompanyDrawer({ company, people, profile, onClose }: CompanyDraw
             ))}
           </Select>
           {company.callback_at ? (
-            <p className="text-sm text-slate-600">Prossimo richiamo: {formatDateTime(company.callback_at)}</p>
+            <p className="text-sm text-muted">Prossimo richiamo: {formatDateTime(company.callback_at)}</p>
           ) : null}
           {draftStatus === 'da_richiamare' ? (
-            <div className="space-y-3 rounded-xl border border-orange-200 bg-orange-50 p-3">
+            <div className="space-y-3 rounded-xl border border-warning-dot/30 bg-warning-bg p-3">
               <Input
                 label="Data e ora del richiamo"
                 type="datetime-local"
@@ -195,7 +195,7 @@ export function CompanyDrawer({ company, people, profile, onClose }: CompanyDraw
           )}
 
           <section>
-            <h3 className="mb-3 text-sm font-semibold text-slate-900">Dati anagrafici</h3>
+            <h3 className="mb-3 text-sm font-semibold text-ink">Dati anagrafici</h3>
             {isAdmin ? (
               <form
                 className="space-y-4"
@@ -225,10 +225,10 @@ export function CompanyDrawer({ company, people, profile, onClose }: CompanyDraw
               <dl className="grid gap-4 sm:grid-cols-2">
                 <Field label="Nome">{company.name}</Field>
                 <div>
-                  <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">Telefono</dt>
-                  <dd className="mt-1 text-sm text-slate-900">
+                  <dt className="text-xs font-medium uppercase tracking-wide text-muted">Telefono</dt>
+                  <dd className="mt-1 text-sm text-ink">
                     {company.phone ? (
-                      <a href={telHref(company.phone)} className="text-indigo-700 hover:underline">
+                      <a href={telHref(company.phone)} className="text-primary-700 hover:underline">
                         {company.phone}
                       </a>
                     ) : (
@@ -238,14 +238,14 @@ export function CompanyDrawer({ company, people, profile, onClose }: CompanyDraw
                 </div>
                 <Field label="Email">{company.email ?? ''}</Field>
                 <div>
-                  <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">Sito</dt>
+                  <dt className="text-xs font-medium uppercase tracking-wide text-muted">Sito</dt>
                   <dd className="mt-1 text-sm">
                     {websiteHref(company.website) ? (
                       <a
                         href={websiteHref(company.website)}
                         target="_blank"
                         rel="noreferrer"
-                        className="text-indigo-700 hover:underline"
+                        className="text-primary-700 hover:underline"
                       >
                         {websiteLabel(company.website)}
                       </a>
@@ -264,16 +264,16 @@ export function CompanyDrawer({ company, people, profile, onClose }: CompanyDraw
               </dl>
             )}
             {!isAdmin ? (
-              <p className="mt-3 text-xs text-slate-500">Puoi aggiornare lo stato, le note e la data del richiamo.</p>
+              <p className="mt-3 text-xs text-muted">Puoi aggiornare lo stato, le note e la data del richiamo.</p>
             ) : null}
           </section>
 
           <section>
-            <h3 className="text-sm font-semibold text-slate-900">Chiamate</h3>
-            {calls.isPending ? <p className="mt-2 text-sm text-slate-500">Caricamento cronologia…</p> : null}
+            <h3 className="text-sm font-semibold text-ink">Chiamate</h3>
+            {calls.isPending ? <p className="mt-2 text-sm text-muted">Caricamento cronologia…</p> : null}
             {calls.isError ? <p className="mt-2 text-sm text-red-600">{errorMessage(calls.error)}</p> : null}
             {calls.isSuccess && calls.data.length === 0 ? (
-              <p className="mt-2 text-sm text-slate-500">Nessuna chiamata registrata.</p>
+              <p className="mt-2 text-sm text-muted">Nessuna chiamata registrata.</p>
             ) : null}
             {calls.isSuccess && calls.data.length > 0 ? (
               <ol className="mt-3 space-y-3">
@@ -282,13 +282,13 @@ export function CompanyDrawer({ company, people, profile, onClose }: CompanyDraw
                     people.find((person) => person.id === item.user_id)?.full_name ??
                     (item.user_id === profile.id ? profile.full_name : 'Collaboratore')
                   return (
-                    <li key={item.id} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
-                      <p className="text-sm font-medium text-slate-900">{statusLabel(item.outcome)}</p>
-                      {item.note ? <p className="mt-1 text-sm text-slate-700">{item.note}</p> : null}
+                    <li key={item.id} className="rounded-xl border border-line bg-canvas px-3 py-2">
+                      <p className="text-sm font-medium text-ink">{statusLabel(item.outcome)}</p>
+                      {item.note ? <p className="mt-1 text-sm text-ink">{item.note}</p> : null}
                       {item.callback_at ? (
-                        <p className="mt-1 text-xs text-slate-500">Richiamo {formatDateTime(item.callback_at)}</p>
+                        <p className="mt-1 text-xs text-muted">Richiamo {formatDateTime(item.callback_at)}</p>
                       ) : null}
-                      <p className="mt-1 text-xs text-slate-500">
+                      <p className="mt-1 text-xs text-muted">
                         {author} · {formatDateTime(item.created_at)}
                       </p>
                     </li>
@@ -299,15 +299,15 @@ export function CompanyDrawer({ company, people, profile, onClose }: CompanyDraw
           </section>
 
           <section>
-            <h3 className="text-sm font-semibold text-slate-900">Note</h3>
+            <h3 className="text-sm font-semibold text-ink">Note</h3>
             {notes.length === 0 ? (
-              <p className="mt-2 text-sm text-slate-500">Nessuna nota.</p>
+              <p className="mt-2 text-sm text-muted">Nessuna nota.</p>
             ) : (
               <ol className="mt-3 space-y-3">
                 {notes.map((item) => (
-                  <li key={item.id} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
-                    <p className="text-sm text-slate-800">{item.body}</p>
-                    <p className="mt-1 text-xs text-slate-500">
+                  <li key={item.id} className="rounded-xl border border-line bg-canvas px-3 py-2">
+                    <p className="text-sm text-ink">{item.body}</p>
+                    <p className="mt-1 text-xs text-muted">
                       {item.author_name} · {formatDateTime(item.created_at)}
                     </p>
                   </li>
@@ -326,14 +326,14 @@ export function CompanyDrawer({ company, people, profile, onClose }: CompanyDraw
                 )
               }}
             >
-              <label className="block text-sm font-medium text-slate-700" htmlFor="company-note">
+              <label className="block text-sm font-medium text-ink" htmlFor="company-note">
                 Nuova nota
               </label>
               <textarea
                 id="company-note"
                 value={note}
                 rows={3}
-                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-900 shadow-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+                className="w-full rounded-lg border border-line px-3 py-2 text-sm text-ink shadow-sm outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20"
                 placeholder="Scrivi una nota"
                 onChange={(event) => setNote(event.target.value)}
               />

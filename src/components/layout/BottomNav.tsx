@@ -2,23 +2,31 @@ import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { MoreHorizontal } from 'lucide-react'
 import { NavLink, useLocation } from 'react-router-dom'
+import { useDashboardStats } from '../../hooks/useDashboard'
 import { useProfile } from '../../hooks/useProfile'
 import { adminNav, collaboratorNav, type NavItem } from './nav'
 
 const MOBILE_PRIMARY_COUNT = 5
 
-function TabItem({ item, active }: { item: NavItem; active: boolean }) {
+function TabItem({ item, active, badgeCount }: { item: NavItem; active: boolean; badgeCount?: number }) {
   return (
     <NavLink
       to={item.to}
-      className={`relative flex min-h-11 min-w-11 flex-1 flex-col items-center justify-center gap-0.5 px-1 transition-colors duration-150 ${
-        active ? 'text-primary-600' : 'text-muted'
+      className={`relative flex min-h-11 min-w-11 flex-1 flex-col items-center justify-center gap-0.5 rounded-xl px-1 transition-colors duration-150 ${
+        active ? 'bg-primary-50 text-primary-600' : 'text-muted'
       }`}
     >
       {active ? (
-        <span className="absolute top-1 h-1 w-4 rounded-full bg-gradient-to-r from-primary-400 to-primary-700 transition-opacity duration-150" aria-hidden="true" />
+        <span className="absolute top-1 h-1 w-4 rounded-full bg-primary-600 transition-opacity duration-150" aria-hidden="true" />
       ) : null}
-      <item.icon className="h-5 w-5" aria-hidden="true" strokeWidth={active ? 2.25 : 1.75} />
+      <span className="relative">
+        <item.icon className="h-5 w-5" aria-hidden="true" strokeWidth={active ? 2.25 : 1.75} />
+        {item.badge === 'callbacks' && badgeCount && badgeCount > 0 ? (
+          <span className="absolute -right-2.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-danger-dot px-1 text-[10px] font-bold leading-none text-white">
+            {badgeCount > 99 ? '99+' : badgeCount}
+          </span>
+        ) : null}
+      </span>
       <span className="max-w-full truncate text-center text-[11px] font-medium leading-tight">{item.label}</span>
     </NavLink>
   )
@@ -82,8 +90,10 @@ function AltroSheet({
 
 export function BottomNav() {
   const { profile } = useProfile()
+  const stats = useDashboardStats(profile)
   const location = useLocation()
   const [altroOpen, setAltroOpen] = useState(false)
+  const callbackBadge = stats.data?.callbacksDueCount ?? 0
 
   if (!profile) return null
 
@@ -101,7 +111,12 @@ export function BottomNav() {
       >
         <div className="flex h-16 items-stretch justify-around px-1">
           {primary.map((item) => (
-            <TabItem key={item.to} item={item} active={location.pathname.startsWith(item.to)} />
+            <TabItem
+              key={item.to}
+              item={item}
+              active={location.pathname.startsWith(item.to)}
+              badgeCount={callbackBadge}
+            />
           ))}
           {needsAltro ? (
             <button
@@ -113,7 +128,7 @@ export function BottomNav() {
               aria-label="Altro"
             >
               {overflowActive ? (
-                <span className="absolute top-1 h-1 w-4 rounded-full bg-gradient-to-r from-primary-400 to-primary-700" aria-hidden="true" />
+                <span className="absolute top-1 h-1 w-4 rounded-full bg-primary-600" aria-hidden="true" />
               ) : null}
               <MoreHorizontal className="h-5 w-5" aria-hidden="true" strokeWidth={overflowActive ? 2.25 : 1.75} />
               <span className="text-[11px] font-medium leading-tight">Altro</span>
