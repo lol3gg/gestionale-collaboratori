@@ -48,7 +48,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [realProfile, setRealProfile] = useState<Profile | null>(AUTH_BYPASS ? BYPASS_PROFILE : null)
   const [viewAsRole, setViewAsRole] = useState<UserRole | null>(() => readViewAsRole())
-  const [loading, setLoading] = useState(isSupabaseConfigured)
+  const [loading, setLoading] = useState(isSupabaseConfigured && !AUTH_BYPASS)
 
   const applySession = useCallback(async (next: Session | null) => {
     setSession(next)

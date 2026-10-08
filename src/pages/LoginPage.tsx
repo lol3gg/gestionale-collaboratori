@@ -7,6 +7,7 @@ import { Input } from '../components/ui/Input'
 import { FullPageSpinner } from '../components/ui/Spinner'
 import { ThemeToggle } from '../components/ui/ThemeToggle'
 import { useProfile } from '../hooks/useProfile'
+import { AUTH_BYPASS } from '../lib/authBypass'
 import { consumeAuthNotice } from '../lib/format'
 import { errorMessage } from '../lib/validators'
 
@@ -18,6 +19,7 @@ export function LoginPage() {
   const [error, setError] = useState<string | null>(() => consumeAuthNotice())
   const [submitting, setSubmitting] = useState(false)
 
+  if (AUTH_BYPASS) return <Navigate to="/dashboard" replace />
   if (loading) return <FullPageSpinner />
   if (profile) return <Navigate to="/dashboard" replace />
 

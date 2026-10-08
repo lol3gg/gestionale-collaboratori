@@ -1,4 +1,5 @@
 import { invokeAdminUsers } from './adminUsers'
+import { AUTH_BYPASS } from './authBypass'
 import type { CallTab } from './calls'
 import { isRecord } from './guards'
 import { mapCallLog, mapCompany, mapCompanyFromUnknown, type DbCompanyRow } from './mapCompany'
@@ -59,8 +60,25 @@ export const queryKeys = {
     ['search-geo', params?.region ?? 'all', params?.province ?? 'all'] as const,
 }
 
-function throwQuery(error: { message: string } | null): asserts error is null {
+function isAuthBlocked(error: { message?: string; code?: string } | null): boolean {
+  if (!error) return false
+  const msg = `${error.message ?? ''} ${error.code ?? ''}`.toLowerCase()
+  return (
+    msg.includes('permission denied') ||
+    msg.includes('not authenticated') ||
+    msg.includes('non autenticato') ||
+    msg.includes('jwt') ||
+    msg.includes('42501') ||
+    msg.includes('pgrst301')
+  )
+}
+
+function throwQuery(error: { message: string; code?: string } | null): asserts error is null {
   if (error) throw new Error(mapRpcError(error.message))
+}
+
+function allowEmptyOnBypass(error: { message?: string; code?: string } | null): boolean {
+  return AUTH_BYPASS && isAuthBlocked(error)
 }
 
 function db() {
@@ -175,6 +193,7 @@ async function countForTab(
   q = applyCallTabFilter(q, tab, actor.id, actor.role)
   q = applyGeoFilters(q, filters)
   const { count, error } = await q
+  if (allowEmptyOnBypass(error)) return 0
   throwQuery(error)
   return count ?? 0
 }
@@ -214,6 +233,7 @@ export async function getCompanies(filter?: CompanyListParams | { assigneeId?: s
   }
 
   const { data, error, count } = await q
+  if (allowEmptyOnBypass(error)) return { companies: [], total: 0 }
   throwQuery(error)
   const companies = ((data ?? []) as unknown as DbCompanyRow[]).map(mapCompany)
   return { companies, total: count ?? companies.length }
@@ -405,12 +425,34 @@ export async function getCallQueue(actor: Actor, params?: CallQueueParams): Prom
   ])
 
   const { data, error, count } = listResult
+  if (allowEmptyOnBypass(error)) {
+    return {
+      companies: [],
+      logs: [],
+      total: 0,
+      counts: { da_chiamare: 0, da_riprovare: 0, da_richiamare: 0, mie: 0, chiusi: 0 },
+      regions: [],
+      provinces: [],
+      cities: [],
+    }
+  }
   throwQuery(error)
 
   const companies = ((data ?? []) as unknown as DbCompanyRow[]).map(mapCompany)
   const logs = await fetchLogsForCompanies(companies.map((c) => c.id))
 
   const filterRows = await db().from('companies').select('region, province, city')
+  if (allowEmptyOnBypass(filterRows.error)) {
+    return {
+      companies,
+      logs,
+      total: count ?? companies.length,
+      counts: Object.fromEntries(counts) as CallQueue['counts'],
+      regions: [],
+      provinces: [],
+      cities: [],
+    }
+  }
   throwQuery(filterRows.error)
   const regions = uniqueSorted((filterRows.data ?? []).map((r) => r.region).filter(Boolean))
   const provinces = uniqueSorted(
@@ -564,6 +606,7 @@ export async function getCollaborators(): Promise<Collaborator[]> {
     .from('profiles')
     .select('id, full_name, email, role, active, daily_goal, created_at')
     .order('full_name', { ascending: true })
+  if (allowEmptyOnBypass(error)) return []
   throwQuery(error)
 
   const ids = (profiles ?? []).map((p) => p.id)
@@ -756,6 +799,25 @@ async function getDashboardStatsFallback(viewer: DashboardViewer): Promise<Dashb
     companiesQuery = companiesQuery.eq('assigned_to', viewer.id)
   }
   const { data: companies, error: companiesError } = await companiesQuery
+  if (allowEmptyOnBypass(companiesError)) {
+    return {
+      total: 0,
+      assigned: 0,
+      byStatus: [],
+      callsToday: 0,
+      callsThisWeek: 0,
+      acceptedToday: 0,
+      rejectedToday: 0,
+      acceptanceRate30d: null,
+      dailyGoal: 30,
+      claimedCount: 0,
+      claimLimit: CLAIM_LIMIT,
+      ranking: [],
+      callbacksOverdue: [],
+      callbacksToday: [],
+      callbacksDueCount: 0,
+    }
+  }
   throwQuery(companiesError)
 
   const rows = companies ?? []
@@ -895,6 +957,7 @@ export async function getSavedSearches(): Promise<SavedSearch[]> {
     .from('searches')
     .select('id, user_id, name, query, region, province, city, status, created_at')
     .order('created_at', { ascending: false })
+  if (allowEmptyOnBypass(error)) return []
   throwQuery(error)
   return (data ?? []).map(mapSavedSearch)
 }
@@ -945,6 +1008,7 @@ export async function getSearchGeoOptions(params?: {
   province?: string
 }): Promise<SearchGeoOptions> {
   const { data, error } = await db().from('companies').select('region, province, city')
+  if (allowEmptyOnBypass(error)) return { regions: [], provinces: [], cities: [] }
   throwQuery(error)
   const rows = data ?? []
   const region = params?.region && params.region !== 'all' ? params.region : null
