@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { PageHeader } from '../components/layout/PageHeader'
 import { CompanyBulkDialogs, type BulkAction } from '../components/companies/CompanyBulkDialogs'
 import { CompanyDrawer } from '../components/companies/CompanyDrawer'
@@ -18,7 +19,7 @@ import { downloadCsv } from '../lib/csv'
 import { formatDate } from '../lib/format'
 import { statusLabel } from '../lib/labels'
 import { errorMessage } from '../lib/validators'
-import type { Company, CompanyListParams } from '../types'
+import { COMPANY_STATUSES, type Company, type CompanyListParams, type CompanyStatus } from '../types'
 
 const PAGE_SIZE = 25
 const emptyCompanies: Company[] = []
@@ -30,6 +31,25 @@ const initialFilters: CompanyListFilters = {
   province: 'all',
   assignee: 'all',
   phone: 'all',
+}
+
+function filtersFromSearchParams(params: URLSearchParams): CompanyListFilters {
+  const statusRaw = params.get('status')
+  const status: CompanyStatus | 'all' =
+    statusRaw && (COMPANY_STATUSES as readonly string[]).includes(statusRaw)
+      ? (statusRaw as CompanyStatus)
+      : 'all'
+  const phoneRaw = params.get('phone')
+  const phone: CompanyListFilters['phone'] =
+    phoneRaw === 'yes' || phoneRaw === 'no' ? phoneRaw : 'all'
+  return {
+    search: params.get('q') ?? '',
+    status,
+    region: params.get('region') ?? 'all',
+    province: params.get('province') ?? 'all',
+    assignee: params.get('assignee') ?? 'all',
+    phone,
+  }
 }
 
 function filtersActive(filters: CompanyListFilters): boolean {
@@ -45,9 +65,10 @@ function filtersActive(filters: CompanyListFilters): boolean {
 
 export function AziendePage() {
   const toast = useToast()
+  const [searchParams] = useSearchParams()
   const { profile, loading } = useProfile()
   const peopleQuery = useCollaborators()
-  const [filters, setFilters] = useState<CompanyListFilters>(initialFilters)
+  const [filters, setFilters] = useState<CompanyListFilters>(() => filtersFromSearchParams(searchParams))
   const [sort, setSort] = useState<{ key: CompanySortKey; dir: 'asc' | 'desc' }>({ key: 'name', dir: 'asc' })
   const [page, setPage] = useState(0)
   const [showEmail, setShowEmail] = useState(false)
@@ -66,12 +87,17 @@ export function AziendePage() {
     [filters, isAdmin],
   )
 
+  useEffect(() => {
+    setFilters(filtersFromSearchParams(searchParams))
+  }, [searchParams])
+
   const listParams = useMemo<CompanyListParams>(
     () => ({
       search: visibleFilters.search,
       status: visibleFilters.status,
       region: visibleFilters.region,
       province: visibleFilters.province,
+      city: searchParams.get('city') ?? 'all',
       assignee: visibleFilters.assignee,
       phone: visibleFilters.phone,
       sortKey: sort.key,
@@ -79,7 +105,7 @@ export function AziendePage() {
       page,
       pageSize: PAGE_SIZE,
     }),
-    [visibleFilters, sort, page],
+    [visibleFilters, sort, page, searchParams],
   )
 
   const query = useCompanies(profile, listParams)

@@ -13,7 +13,7 @@ import { CollaboratoriPage } from './pages/CollaboratoriPage'
 import { DashboardPage } from './pages/DashboardPage'
 import { LeMieAziendePage } from './pages/LeMieAziendePage'
 import { LoginPage } from './pages/LoginPage'
-import { PlaceholderPage } from './pages/PlaceholderPage'
+import { RicercaPage } from './pages/RicercaPage'
 import { SetupPage } from './pages/SetupPage'
 
 function AdminOnlyChiamate() {
@@ -38,7 +38,7 @@ export function App() {
           <Route path="/calendario" element={<CalendarioPage />} />
           <Route element={<RequireRole role="admin" />}>
             <Route path="/aziende" element={<AziendePage />} />
-            <Route path="/ricerca" element={<PlaceholderPage title="Ricerca" />} />
+            <Route path="/ricerca" element={<RicercaPage />} />
             <Route path="/collaboratori" element={<CollaboratoriPage />} />
           </Route>
           <Route element={<RequireRole role="collaboratore" />}>

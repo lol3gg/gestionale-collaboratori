@@ -165,11 +165,39 @@ export type CompanyFilter = {
   assigneeId?: string
 }
 
+export type SavedSearch = {
+  id: string
+  user_id: string
+  name: string
+  query: string
+  region: string | null
+  province: string | null
+  city: string | null
+  status: CompanyStatus | null
+  created_at: string
+}
+
+export type SavedSearchDraft = {
+  name: string
+  query: string
+  region: string | null
+  province: string | null
+  city: string | null
+  status: CompanyStatus | null
+}
+
+export type SearchGeoOptions = {
+  regions: string[]
+  provinces: string[]
+  cities: string[]
+}
+
 export type CompanyListParams = {
   search?: string
   status?: CompanyStatus | 'all'
   region?: string
   province?: string
+  city?: string
   assignee?: string
   phone?: 'all' | 'yes' | 'no'
   sortKey?:

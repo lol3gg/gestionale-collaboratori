@@ -7,30 +7,34 @@ import { mapAuthError, mapRpcError } from './validators'
 
 /** Limite UI allineato a public.max_claimed_companies() (default 30). */
 export const CLAIM_LIMIT = 30
-import type {
-  Actor,
-  AddExplanationExtraSlotInput,
-  BookExplanationInput,
-  CallLog,
-  CallOutcomeInput,
-  CallQueue,
-  Collaborator,
-  CollaboratorDraft,
-  Company,
-  CompanyDetails,
-  CompanyDraft,
-  CompanyListParams,
-  CompanyListResult,
-  CompanyNote,
-  CompanyStatus,
-  CreateCollaboratorInput,
-  DashboardStats,
-  DashboardViewer,
-  DuplicatePolicy,
-  ExplanationBooking,
-  ExplanationExtraSlot,
-  ImportCompanyRow,
-  ImportResult,
+import {
+  COMPANY_STATUSES,
+  type Actor,
+  type AddExplanationExtraSlotInput,
+  type BookExplanationInput,
+  type CallLog,
+  type CallOutcomeInput,
+  type CallQueue,
+  type Collaborator,
+  type CollaboratorDraft,
+  type Company,
+  type CompanyDetails,
+  type CompanyDraft,
+  type CompanyListParams,
+  type CompanyListResult,
+  type CompanyNote,
+  type CompanyStatus,
+  type CreateCollaboratorInput,
+  type DashboardStats,
+  type DashboardViewer,
+  type DuplicatePolicy,
+  type ExplanationBooking,
+  type ExplanationExtraSlot,
+  type ImportCompanyRow,
+  type ImportResult,
+  type SavedSearch,
+  type SavedSearchDraft,
+  type SearchGeoOptions,
 } from '../types'
 
 const COMPANY_SELECT = `
@@ -50,6 +54,9 @@ export const queryKeys = {
   callLogs: (companyId: string) => ['call-logs', companyId] as const,
   bookings: ['explanation-bookings'] as const,
   extraSlots: ['explanation-extra-slots'] as const,
+  searches: ['searches'] as const,
+  searchGeo: (params?: { region?: string; province?: string }) =>
+    ['search-geo', params?.region ?? 'all', params?.province ?? 'all'] as const,
 }
 
 function throwQuery(error: { message: string } | null): asserts error is null {
@@ -86,11 +93,16 @@ function sortColumn(key: CompanyListParams['sortKey']): string {
   }
 }
 
+function escapeIlike(value: string): string {
+  return value.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_').replace(/,/g, ' ')
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function applyListFilters(query: any, filter: CompanyListParams) {
   let q = query
   if (filter.search?.trim()) {
-    q = q.ilike('name', `%${filter.search.trim()}%`)
+    const term = escapeIlike(filter.search.trim())
+    q = q.or(`name.ilike.%${term}%,city.ilike.%${term}%,phone.ilike.%${term}%,email.ilike.%${term}%`)
   }
   if (filter.status && filter.status !== 'all') {
     q = q.eq('status', filter.status)
@@ -100,6 +112,9 @@ function applyListFilters(query: any, filter: CompanyListParams) {
   }
   if (filter.province && filter.province !== 'all') {
     q = q.eq('province', filter.province)
+  }
+  if (filter.city && filter.city !== 'all') {
+    q = q.eq('city', filter.city)
   }
   if (filter.assignee === 'none') {
     q = q.is('assigned_to', null)
@@ -835,4 +850,115 @@ export async function getDashboardStats(viewer: DashboardViewer): Promise<Dashbo
   if (!error && isRecord(data)) return parseDashboardPayload(data)
   // RPC assente o non aggiornata sul progetto → fallback client
   return getDashboardStatsFallback(viewer)
+}
+
+function isCompanyStatus(value: unknown): value is CompanyStatus {
+  return typeof value === 'string' && (COMPANY_STATUSES as readonly string[]).includes(value)
+}
+
+function mapSavedSearch(row: {
+  id: string
+  user_id: string
+  name: string
+  query: string
+  region: string | null
+  province: string | null
+  city: string | null
+  status: string | null
+  created_at: string
+}): SavedSearch {
+  return {
+    id: row.id,
+    user_id: row.user_id,
+    name: row.name,
+    query: row.query ?? '',
+    region: row.region,
+    province: row.province,
+    city: row.city,
+    status: isCompanyStatus(row.status) ? row.status : null,
+    created_at: row.created_at,
+  }
+}
+
+export function savedSearchToListParams(search: Pick<SavedSearch, 'query' | 'region' | 'province' | 'city' | 'status'>): CompanyListParams {
+  return {
+    search: search.query || undefined,
+    region: search.region ?? 'all',
+    province: search.province ?? 'all',
+    city: search.city ?? 'all',
+    status: search.status ?? 'all',
+  }
+}
+
+export async function getSavedSearches(): Promise<SavedSearch[]> {
+  const { data, error } = await db()
+    .from('searches')
+    .select('id, user_id, name, query, region, province, city, status, created_at')
+    .order('created_at', { ascending: false })
+  throwQuery(error)
+  return (data ?? []).map(mapSavedSearch)
+}
+
+export async function createSavedSearch(draft: SavedSearchDraft, actor: Actor): Promise<SavedSearch> {
+  const { data, error } = await db()
+    .from('searches')
+    .insert({
+      user_id: actor.id,
+      name: draft.name.trim(),
+      query: draft.query.trim(),
+      region: draft.region,
+      province: draft.province,
+      city: draft.city,
+      status: draft.status,
+    })
+    .select('id, user_id, name, query, region, province, city, status, created_at')
+    .single()
+  throwQuery(error)
+  return mapSavedSearch(data)
+}
+
+export async function updateSavedSearch(id: string, draft: SavedSearchDraft): Promise<SavedSearch> {
+  const { data, error } = await db()
+    .from('searches')
+    .update({
+      name: draft.name.trim(),
+      query: draft.query.trim(),
+      region: draft.region,
+      province: draft.province,
+      city: draft.city,
+      status: draft.status,
+    })
+    .eq('id', id)
+    .select('id, user_id, name, query, region, province, city, status, created_at')
+    .single()
+  throwQuery(error)
+  return mapSavedSearch(data)
+}
+
+export async function deleteSavedSearch(id: string): Promise<void> {
+  const { error } = await db().from('searches').delete().eq('id', id)
+  throwQuery(error)
+}
+
+export async function getSearchGeoOptions(params?: {
+  region?: string
+  province?: string
+}): Promise<SearchGeoOptions> {
+  const { data, error } = await db().from('companies').select('region, province, city')
+  throwQuery(error)
+  const rows = data ?? []
+  const region = params?.region && params.region !== 'all' ? params.region : null
+  const province = params?.province && params.province !== 'all' ? params.province : null
+  return {
+    regions: uniqueSorted(rows.map((r) => r.region).filter(Boolean)),
+    provinces: uniqueSorted(
+      rows.filter((r) => !region || r.region === region).map((r) => r.province).filter(Boolean),
+    ),
+    cities: uniqueSorted(
+      rows
+        .filter((r) => (!region || r.region === region) && (!province || r.province === province))
+        .map((r) => r.city)
+        .filter(Boolean),
+    ),
+  }
 }

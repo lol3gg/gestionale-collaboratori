@@ -129,6 +129,39 @@ export type Database = {
         }
         Relationships: []
       }
+      searches: {
+        Row: {
+          id: string
+          user_id: string
+          name: string
+          query: string
+          region: string | null
+          province: string | null
+          city: string | null
+          status: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          name: string
+          query?: string
+          region?: string | null
+          province?: string | null
+          city?: string | null
+          status?: string | null
+          created_at?: string
+        }
+        Update: {
+          name?: string
+          query?: string
+          region?: string | null
+          province?: string | null
+          city?: string | null
+          status?: string | null
+        }
+        Relationships: []
+      }
       explanation_bookings: {
         Row: {
           id: string
