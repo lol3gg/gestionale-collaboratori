@@ -4,7 +4,6 @@ import type { CallTab } from './calls'
 import {
   demoAssignCompany,
   demoClaimCompany,
-  demoCreateSavedSearch,
   demoDeleteSavedSearch,
   demoGetCallLogs,
   demoGetCallQueue,
@@ -16,7 +15,6 @@ import {
   demoRecordCall,
   demoReleaseCompany,
   demoSetStatus,
-  demoUpdateSavedSearch,
   isDemoMode,
 } from './demoSeed'
 import { isRecord } from './guards'
@@ -27,7 +25,6 @@ import { mapAuthError, mapRpcError } from './validators'
 /** Limite UI allineato a public.max_claimed_companies() (default 30). */
 export const CLAIM_LIMIT = 30
 import {
-  COMPANY_STATUSES,
   type Actor,
   type AddExplanationExtraSlotInput,
   type BookExplanationInput,
@@ -51,9 +48,16 @@ import {
   type ExplanationExtraSlot,
   type ImportCompanyRow,
   type ImportResult,
-  type SavedSearch,
-  type SavedSearchDraft,
+  type AddSearchResultsResult,
+  type BatchSummary,
+  type CancelBatchResult,
+  type PlacesEstimate,
+  type PlacesSearch,
+  type SearchCoverage,
   type SearchGeoOptions,
+  type SearchJob,
+  type SearchResultRow,
+  type SearchStatus,
 } from '../types'
 
 const COMPANY_SELECT = `
@@ -74,8 +78,11 @@ export const queryKeys = {
   bookings: ['explanation-bookings'] as const,
   extraSlots: ['explanation-extra-slots'] as const,
   searches: ['searches'] as const,
-  searchGeo: (params?: { region?: string; province?: string }) =>
-    ['search-geo', params?.region ?? 'all', params?.province ?? 'all'] as const,
+  searchJob: (searchId: string) => ['search-job', searchId] as const,
+  searchResults: (searchId: string) => ['search-results', searchId] as const,
+  searchCoverage: (searchId: string) => ['search-coverage', searchId] as const,
+  searchGeo: (params?: { country?: string; region?: string }) =>
+    ['search-geo', params?.country ?? 'IT', params?.region ?? 'all'] as const,
 }
 
 function isAuthBlocked(error: { message?: string; code?: string } | null): boolean {
@@ -573,6 +580,7 @@ export async function releaseCompany(id: string, actor: Actor): Promise<Company>
 }
 
 export async function getExplanationBookings(): Promise<ExplanationBooking[]> {
+  if (isDemoMode()) return []
   const { data, error } = await db()
     .from('explanation_bookings')
     .select('id, company_id, user_id, starts_at, ends_at, created_at')
@@ -582,6 +590,7 @@ export async function getExplanationBookings(): Promise<ExplanationBooking[]> {
 }
 
 export async function getExplanationExtraSlots(): Promise<ExplanationExtraSlot[]> {
+  if (isDemoMode()) return []
   const { data, error } = await db()
     .from('explanation_extra_slots')
     .select('id, day, start_min, created_at')
@@ -951,113 +960,141 @@ export async function getDashboardStats(viewer: DashboardViewer): Promise<Dashbo
   return getDashboardStatsFallback(viewer)
 }
 
-function isCompanyStatus(value: unknown): value is CompanyStatus {
-  return typeof value === 'string' && (COMPANY_STATUSES as readonly string[]).includes(value)
-}
+const SEARCH_SELECT = `
+  id, user_id, name, country, region, regions, provinces, keywords,
+  max_requests, estimated_queries, estimated_cost_eur,
+  actual_requests, results_count, added_count, auto_add_to_companies,
+  import_batch_id, summary, status, error_message, created_at, completed_at
+`
 
-function mapSavedSearch(row: {
-  id: string
-  user_id: string
-  name: string
-  query: string
-  region: string | null
-  province: string | null
-  city: string | null
-  status: string | null
-  created_at: string
-}): SavedSearch {
+function mapBatchSummary(value: unknown): BatchSummary | null {
+  if (!isRecord(value)) return null
   return {
-    id: row.id,
-    user_id: row.user_id,
-    name: row.name,
-    query: row.query ?? '',
-    region: row.region,
-    province: row.province,
-    city: row.city,
-    status: isCompanyStatus(row.status) ? row.status : null,
-    created_at: row.created_at,
+    comuni_done: Number(value.comuni_done ?? 0),
+    comuni_total: Number(value.comuni_total ?? 0),
+    found: Number(value.found ?? 0),
+    inserted: Number(value.inserted ?? 0),
+    duplicates_safe: Number(value.duplicates_safe ?? 0),
+    duplicates_doubtful: Number(value.duplicates_doubtful ?? 0),
+    without_phone: Number(value.without_phone ?? 0),
+    requests: Number(value.requests ?? 0),
+    estimated_cost_eur: Number(value.estimated_cost_eur ?? 0),
   }
 }
 
-export function savedSearchToListParams(search: Pick<SavedSearch, 'query' | 'region' | 'province' | 'city' | 'status'>): CompanyListParams {
+function isSearchStatus(value: unknown): value is SearchStatus {
+  return (
+    typeof value === 'string' &&
+    [
+      'draft',
+      'queued',
+      'running',
+      'completed',
+      'partial_error',
+      'failed',
+      'cancelled',
+      'paused',
+      'paused_limit',
+    ].includes(value)
+  )
+}
+
+function mapPlacesSearch(row: Record<string, unknown>): PlacesSearch {
+  const regions = Array.isArray(row.regions)
+    ? row.regions.map(String)
+    : typeof row.region === 'string' && row.region
+      ? [row.region]
+      : []
   return {
-    search: search.query || undefined,
-    region: search.region ?? 'all',
-    province: search.province ?? 'all',
-    city: search.city ?? 'all',
-    status: search.status ?? 'all',
+    id: String(row.id),
+    user_id: String(row.user_id),
+    name: String(row.name ?? ''),
+    country: String(row.country ?? 'IT'),
+    region: typeof row.region === 'string' ? row.region : null,
+    regions,
+    provinces: Array.isArray(row.provinces) ? row.provinces.map(String) : [],
+    keywords: Array.isArray(row.keywords) ? row.keywords.map(String) : [],
+    max_requests: Number(row.max_requests ?? 100),
+    estimated_queries: Number(row.estimated_queries ?? 0),
+    estimated_cost_eur: Number(row.estimated_cost_eur ?? 0),
+    actual_requests: Number(row.actual_requests ?? 0),
+    results_count: Number(row.results_count ?? 0),
+    added_count: Number(row.added_count ?? 0),
+    auto_add_to_companies: Boolean(row.auto_add_to_companies),
+    import_batch_id: typeof row.import_batch_id === 'string' ? row.import_batch_id : null,
+    summary: mapBatchSummary(row.summary),
+    status: isSearchStatus(row.status) ? row.status : 'draft',
+    error_message: typeof row.error_message === 'string' ? row.error_message : null,
+    created_at: String(row.created_at),
+    completed_at: typeof row.completed_at === 'string' ? row.completed_at : null,
   }
 }
 
-export async function getSavedSearches(): Promise<SavedSearch[]> {
+function mapSearchJob(row: Record<string, unknown>): SearchJob {
+  return {
+    id: String(row.id),
+    search_id: String(row.search_id),
+    status: isSearchStatus(row.status) ? row.status : 'queued',
+    total_queries: Number(row.total_queries ?? 0),
+    completed_queries: Number(row.completed_queries ?? 0),
+    cursor_offset: Number(row.cursor_offset ?? 0),
+    batch_size: Number(row.batch_size ?? 10),
+    request_count: Number(row.request_count ?? 0),
+    saturated_cells: Number(row.saturated_cells ?? 0),
+    pending_cells: Number(row.pending_cells ?? 0),
+    comuni_total: Number(row.comuni_total ?? 0),
+    comuni_done: Number(row.comuni_done ?? 0),
+    pause_summary: typeof row.pause_summary === 'string' ? row.pause_summary : null,
+    error_message: typeof row.error_message === 'string' ? row.error_message : null,
+    updated_at: String(row.updated_at),
+  }
+}
+
+function mapSearchResult(row: Record<string, unknown>): SearchResultRow {
+  return {
+    id: String(row.id),
+    search_id: String(row.search_id),
+    google_place_id: typeof row.google_place_id === 'string' ? row.google_place_id : null,
+    name: String(row.name ?? ''),
+    phone: String(row.phone ?? ''),
+    phone_normalized: String(row.phone_normalized ?? ''),
+    website: String(row.website ?? ''),
+    address: typeof row.address === 'string' ? row.address : null,
+    city: String(row.city ?? ''),
+    province: String(row.province ?? ''),
+    region: String(row.region ?? ''),
+    country: String(row.country ?? 'IT'),
+    business_status: typeof row.business_status === 'string' ? row.business_status : null,
+    is_duplicate_in_db: Boolean(row.is_duplicate_in_db),
+    is_duplicate_in_search: Boolean(row.is_duplicate_in_search),
+    possible_duplicate: Boolean(row.possible_duplicate),
+    similar_company_id: typeof row.similar_company_id === 'string' ? row.similar_company_id : null,
+    discarded: Boolean(row.discarded),
+    added_company_id: typeof row.added_company_id === 'string' ? row.added_company_id : null,
+    auto_added: Boolean(row.auto_added),
+    fetched_at: String(row.fetched_at),
+    created_at: String(row.created_at),
+  }
+}
+
+export async function getPlacesSearches(): Promise<PlacesSearch[]> {
   if (isDemoMode()) return demoGetSavedSearches()
   const { data, error } = await db()
     .from('searches')
-    .select('id, user_id, name, query, region, province, city, status, created_at')
+    .select(SEARCH_SELECT)
     .order('created_at', { ascending: false })
   if (allowEmptyOnBypass(error)) return []
   throwQuery(error)
-  return (data ?? []).map(mapSavedSearch)
+  return (data ?? []).map((row) => mapPlacesSearch(row as Record<string, unknown>))
 }
 
-export async function createSavedSearch(draft: SavedSearchDraft, actor: Actor): Promise<SavedSearch> {
-  if (isDemoMode()) {
-    return demoCreateSavedSearch({
-      user_id: actor.id,
-      name: draft.name.trim(),
-      query: draft.query.trim(),
-      region: draft.region,
-      province: draft.province,
-      city: draft.city,
-      status: draft.status,
-    })
-  }
-  const { data, error } = await db()
-    .from('searches')
-    .insert({
-      user_id: actor.id,
-      name: draft.name.trim(),
-      query: draft.query.trim(),
-      region: draft.region,
-      province: draft.province,
-      city: draft.city,
-      status: draft.status,
-    })
-    .select('id, user_id, name, query, region, province, city, status, created_at')
-    .single()
+export async function getPlacesSearch(id: string): Promise<PlacesSearch | null> {
+  const { data, error } = await db().from('searches').select(SEARCH_SELECT).eq('id', id).maybeSingle()
   throwQuery(error)
-  return mapSavedSearch(data)
+  return data ? mapPlacesSearch(data as Record<string, unknown>) : null
 }
 
-export async function updateSavedSearch(id: string, draft: SavedSearchDraft): Promise<SavedSearch> {
-  if (isDemoMode()) {
-    return demoUpdateSavedSearch(id, {
-      name: draft.name.trim(),
-      query: draft.query.trim(),
-      region: draft.region,
-      province: draft.province,
-      city: draft.city,
-      status: draft.status,
-    })
-  }
-  const { data, error } = await db()
-    .from('searches')
-    .update({
-      name: draft.name.trim(),
-      query: draft.query.trim(),
-      region: draft.region,
-      province: draft.province,
-      city: draft.city,
-      status: draft.status,
-    })
-    .eq('id', id)
-    .select('id, user_id, name, query, region, province, city, status, created_at')
-    .single()
-  throwQuery(error)
-  return mapSavedSearch(data)
-}
-
-export async function deleteSavedSearch(id: string): Promise<void> {
+export async function deletePlacesSearch(id: string): Promise<void> {
   if (isDemoMode()) {
     demoDeleteSavedSearch(id)
     return
@@ -1066,27 +1103,134 @@ export async function deleteSavedSearch(id: string): Promise<void> {
   throwQuery(error)
 }
 
+export async function getSearchJob(searchId: string): Promise<SearchJob | null> {
+  const { data, error } = await db()
+    .from('search_jobs')
+    .select(
+      'id, search_id, status, total_queries, completed_queries, cursor_offset, batch_size, request_count, saturated_cells, pending_cells, comuni_total, comuni_done, pause_summary, error_message, updated_at',
+    )
+    .eq('search_id', searchId)
+    .maybeSingle()
+  throwQuery(error)
+  return data ? mapSearchJob(data as Record<string, unknown>) : null
+}
+
+export async function getSearchCoverage(searchId: string): Promise<SearchCoverage | null> {
+  const { data, error } = await db().rpc('get_search_coverage', { p_search_id: searchId })
+  throwQuery(error)
+  if (!isRecord(data) || data.error) return null
+  const rawUncovered = Array.isArray(data.uncovered_comuni) ? data.uncovered_comuni : []
+  const uncovered_comuni: SearchCoverage['uncovered_comuni'] = []
+  for (const item of rawUncovered) {
+    if (!isRecord(item)) continue
+    uncovered_comuni.push({
+      comune_id: String(item.comune_id ?? ''),
+      name: String(item.name ?? ''),
+      province: String(item.province ?? ''),
+      population: typeof item.population === 'number' ? item.population : null,
+      pending_cells: Number(item.pending_cells ?? 0),
+    })
+  }
+  return {
+    comuni_total: Number(data.comuni_total ?? 0),
+    comuni_done: Number(data.comuni_done ?? 0),
+    cells_total: Number(data.cells_total ?? 0),
+    cells_done: Number(data.cells_done ?? 0),
+    cells_pending: Number(data.cells_pending ?? 0),
+    cells_saturo: Number(data.cells_saturo ?? 0),
+    cells_manual_review: Number(data.cells_manual_review ?? 0),
+    cells_error: Number(data.cells_error ?? 0),
+    uncovered_comuni,
+  }
+}
+
+export async function getSearchResults(searchId: string): Promise<SearchResultRow[]> {
+  const { data, error } = await db()
+    .from('search_results')
+    .select('*')
+    .eq('search_id', searchId)
+    .order('created_at', { ascending: false })
+  throwQuery(error)
+  return (data ?? []).map((row) => mapSearchResult(row as Record<string, unknown>))
+}
+
+export async function discardSearchResults(ids: string[], discarded = true): Promise<void> {
+  if (ids.length === 0) return
+  const { error } = await db().from('search_results').update({ discarded }).in('id', ids)
+  throwQuery(error)
+}
+
+export async function addSearchResultsToCompanies(ids: string[]): Promise<AddSearchResultsResult> {
+  const { data, error } = await db().rpc('add_search_results_to_companies', { p_ids: ids })
+  throwQuery(error)
+  if (!isRecord(data)) {
+    return { inserted: 0, duplicates: 0, doubtful: 0, skipped: 0, without_phone: 0 }
+  }
+  return {
+    inserted: Number(data.inserted ?? 0),
+    duplicates: Number(data.duplicates ?? 0),
+    doubtful: Number(data.doubtful ?? 0),
+    skipped: Number(data.skipped ?? 0),
+    without_phone: Number(data.without_phone ?? 0),
+  }
+}
+
+export async function estimatePlacesSearch(params: {
+  regions: string[]
+  keywords: string[]
+}): Promise<PlacesEstimate> {
+  const { data, error } = await db().rpc('estimate_places_search_regions', {
+    p_regions: params.regions,
+    p_keywords: params.keywords,
+  })
+  throwQuery(error)
+  if (!isRecord(data)) {
+    return { comuni: 0, keywords: 0, queries: 0, estimated_cost_eur: 0, cost_per_request_eur: 0.032 }
+  }
+  return {
+    comuni: Number(data.comuni ?? 0),
+    keywords: Number(data.keywords ?? 0),
+    queries: Number(data.queries ?? 0),
+    estimated_cost_eur: Number(data.estimated_cost_eur ?? 0),
+    cost_per_request_eur: Number(data.cost_per_request_eur ?? 0.032),
+  }
+}
+
+export async function cancelImportBatch(batchId: string): Promise<CancelBatchResult> {
+  const { data, error } = await db().rpc('cancel_import_batch', { p_batch_id: batchId })
+  throwQuery(error)
+  if (!isRecord(data)) return { deleted: 0, kept: 0, kept_assigned: 0, kept_called: 0 }
+  return {
+    deleted: Number(data.deleted ?? 0),
+    kept: Number(data.kept ?? 0),
+    kept_assigned: Number(data.kept_assigned ?? 0),
+    kept_called: Number(data.kept_called ?? 0),
+  }
+}
+
 export async function getSearchGeoOptions(params?: {
+  country?: string
   region?: string
-  province?: string
 }): Promise<SearchGeoOptions> {
   if (isDemoMode()) return demoGetSearchGeo(params)
-  const { data, error } = await db().from('companies').select('region, province, city')
-  if (allowEmptyOnBypass(error)) return { regions: [], provinces: [], cities: [] }
-  throwQuery(error)
-  const rows = data ?? []
+  const country = params?.country && params.country !== 'all' ? params.country : 'IT'
   const region = params?.region && params.region !== 'all' ? params.region : null
-  const province = params?.province && params.province !== 'all' ? params.province : null
+
+  const { data: regionRows, error: regionErr } = await db()
+    .from('comuni')
+    .select('region')
+    .eq('country', country)
+  if (allowEmptyOnBypass(regionErr)) return { countries: ['IT'], regions: [], provinces: [] }
+  throwQuery(regionErr)
+
+  let provincesQuery = db().from('comuni').select('province').eq('country', country)
+  if (region) provincesQuery = provincesQuery.eq('region', region)
+  const { data: provinceRows, error: provinceErr } = await provincesQuery
+  throwQuery(provinceErr)
+
   return {
-    regions: uniqueSorted(rows.map((r) => r.region).filter(Boolean)),
-    provinces: uniqueSorted(
-      rows.filter((r) => !region || r.region === region).map((r) => r.province).filter(Boolean),
-    ),
-    cities: uniqueSorted(
-      rows
-        .filter((r) => (!region || r.region === region) && (!province || r.province === province))
-        .map((r) => r.city)
-        .filter(Boolean),
-    ),
+    countries: ['IT'],
+    regions: uniqueSorted((regionRows ?? []).map((r) => r.region).filter(Boolean)),
+    provinces: uniqueSorted((provinceRows ?? []).map((r) => r.province).filter(Boolean)),
   }
 }

@@ -9,12 +9,12 @@ import {
 } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { useQueryClient } from '@tanstack/react-query'
-import { AUTH_BYPASS, BYPASS_PROFILE } from '../lib/authBypass'
+import { AUTH_BYPASS, BYPASS_COLLABORATOR, BYPASS_PROFILE } from '../lib/authBypass'
 import { parseProfile } from '../lib/guards'
 import { rememberAuthNotice } from '../lib/format'
 import { getSupabase, isSupabaseConfigured } from '../lib/supabase'
 import { mapAuthError } from '../lib/validators'
-import { readViewAsRole, writeViewAsRole } from '../lib/viewAs'
+import { readBypassRole, readViewAsRole, writeBypassRole, writeViewAsRole } from '../lib/viewAs'
 import type { Profile, UserRole } from '../types'
 
 type AuthContextValue = {
@@ -25,6 +25,8 @@ type AuthContextValue = {
   realRole: UserRole | null
   viewingAsCollaborator: boolean
   setViewAsCollaborator: (enabled: boolean) => void
+  /** Solo con AUTH_BYPASS: entra come admin o collaboratore. */
+  enterAsRole: (role: UserRole) => void
   loading: boolean
   login: (email: string, password: string) => Promise<void>
   logout: () => Promise<void>
@@ -43,17 +45,34 @@ async function fetchProfile(userId: string): Promise<Profile | null> {
   return parseProfile(data)
 }
 
+function profileForBypassRole(role: UserRole): Profile {
+  return role === 'collaboratore' ? { ...BYPASS_COLLABORATOR } : { ...BYPASS_PROFILE }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient()
   const [session, setSession] = useState<Session | null>(null)
-  const [realProfile, setRealProfile] = useState<Profile | null>(AUTH_BYPASS ? BYPASS_PROFILE : null)
+  const [bypassRole, setBypassRole] = useState<UserRole | null>(() =>
+    AUTH_BYPASS ? readBypassRole() : null,
+  )
+  const [realProfile, setRealProfile] = useState<Profile | null>(() => {
+    if (!AUTH_BYPASS) return null
+    const role = readBypassRole()
+    return role ? profileForBypassRole(role) : null
+  })
   const [viewAsRole, setViewAsRole] = useState<UserRole | null>(() => readViewAsRole())
   const [loading, setLoading] = useState(isSupabaseConfigured && !AUTH_BYPASS)
 
   const applySession = useCallback(async (next: Session | null) => {
     setSession(next)
     if (!next?.user) {
-      setRealProfile(AUTH_BYPASS ? BYPASS_PROFILE : null)
+      if (AUTH_BYPASS) {
+        const role = readBypassRole()
+        setBypassRole(role)
+        setRealProfile(role ? profileForBypassRole(role) : null)
+        return
+      }
+      setRealProfile(null)
       setViewAsRole(null)
       writeViewAsRole(null)
       return
@@ -62,7 +81,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const loaded = await fetchProfile(next.user.id)
       if (!loaded) {
         if (AUTH_BYPASS) {
-          setRealProfile(BYPASS_PROFILE)
+          const role = readBypassRole()
+          setRealProfile(role ? profileForBypassRole(role) : null)
           return
         }
         rememberAuthNotice('Profilo non trovato. Contatta un amministratore.')
@@ -73,7 +93,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       if (!loaded.active) {
         if (AUTH_BYPASS) {
-          setRealProfile(BYPASS_PROFILE)
+          const role = readBypassRole()
+          setRealProfile(role ? profileForBypassRole(role) : null)
           return
         }
         rememberAuthNotice('Account disattivato. Contatta un amministratore.')
@@ -89,7 +110,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     } catch {
       if (AUTH_BYPASS) {
-        setRealProfile(BYPASS_PROFILE)
+        const role = readBypassRole()
+        setRealProfile(role ? profileForBypassRole(role) : null)
         return
       }
       rememberAuthNotice('Impossibile caricare il profilo. Riprova.')
@@ -107,11 +129,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     let active = true
     void (async () => {
+      if (AUTH_BYPASS) {
+        const role = readBypassRole()
+        setBypassRole(role)
+        setRealProfile(role ? profileForBypassRole(role) : null)
+        if (active) setLoading(false)
+        return
+      }
       const { data } = await getSupabase().auth.getSession()
       if (!active) return
-      if (data.session) await applySession(data.session)
-      else if (AUTH_BYPASS) setRealProfile(BYPASS_PROFILE)
-      else await applySession(null)
+      await applySession(data.session)
       if (active) setLoading(false)
     })()
 
@@ -142,8 +169,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (error) throw new Error(mapAuthError(error.message))
   }, [])
 
+  const enterAsRole = useCallback(
+    (role: UserRole) => {
+      writeBypassRole(role)
+      setBypassRole(role)
+      setRealProfile(profileForBypassRole(role))
+      setViewAsRole(null)
+      writeViewAsRole(null)
+      queryClient.clear()
+    },
+    [queryClient],
+  )
+
   const logout = useCallback(async () => {
-    if (AUTH_BYPASS) return
+    if (AUTH_BYPASS) {
+      writeBypassRole(null)
+      setBypassRole(null)
+      setRealProfile(null)
+      setViewAsRole(null)
+      writeViewAsRole(null)
+      queryClient.clear()
+      return
+    }
     if (isSupabaseConfigured) await getSupabase().auth.signOut()
     setSession(null)
     setRealProfile(null)
@@ -154,7 +201,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const refreshProfile = useCallback(async () => {
     if (AUTH_BYPASS) {
-      setRealProfile(BYPASS_PROFILE)
+      const role = bypassRole ?? readBypassRole()
+      setRealProfile(role ? profileForBypassRole(role) : null)
       return
     }
     if (!session?.user) {
@@ -162,21 +210,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return
     }
     await applySession(session)
-  }, [applySession, session])
+  }, [applySession, bypassRole, session])
 
   const setViewAsCollaborator = useCallback(
     (enabled: boolean) => {
+      if (AUTH_BYPASS) {
+        enterAsRole(enabled ? 'collaboratore' : 'admin')
+        return
+      }
       if (!realProfile || realProfile.role !== 'admin') return
       const next = enabled ? ('collaboratore' as const) : null
       setViewAsRole(next)
       writeViewAsRole(next)
       queryClient.clear()
     },
-    [queryClient, realProfile],
+    [enterAsRole, queryClient, realProfile],
   )
 
   const viewingAsCollaborator =
-    realProfile?.role === 'admin' && viewAsRole === 'collaboratore'
+    !AUTH_BYPASS && realProfile?.role === 'admin' && viewAsRole === 'collaboratore'
 
   const profile = useMemo(() => {
     if (!realProfile) return null
@@ -188,9 +240,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     () => ({
       session,
       profile,
-      realRole: realProfile?.role ?? null,
-      viewingAsCollaborator,
+      realRole: AUTH_BYPASS ? bypassRole : (realProfile?.role ?? null),
+      viewingAsCollaborator: AUTH_BYPASS
+        ? bypassRole === 'collaboratore'
+        : viewingAsCollaborator,
       setViewAsCollaborator,
+      enterAsRole,
       loading,
       login,
       logout,
@@ -199,9 +254,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [
       session,
       profile,
+      bypassRole,
       realProfile?.role,
       viewingAsCollaborator,
       setViewAsCollaborator,
+      enterAsRole,
       loading,
       login,
       logout,

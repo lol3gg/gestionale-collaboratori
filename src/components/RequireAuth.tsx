@@ -9,8 +9,13 @@ export function RequireAuth() {
   const { profile, loading, error } = useProfile()
   const { logout } = useAuth()
 
-  if (AUTH_BYPASS) return <Outlet />
   if (loading) return <FullPageSpinner />
+
+  if (AUTH_BYPASS) {
+    if (!profile) return <Navigate to="/login" replace />
+    return <Outlet />
+  }
+
   if (!profile && error) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-canvas px-4">

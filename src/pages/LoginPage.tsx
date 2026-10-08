@@ -1,26 +1,70 @@
-import { useState, type FormEvent } from 'react'
-import { Navigate } from 'react-router-dom'
+import { Navigate, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthProvider'
 import { DevologyLogo } from '../components/brand/DevologyLogo'
 import { Button } from '../components/ui/Button'
-import { Input } from '../components/ui/Input'
 import { FullPageSpinner } from '../components/ui/Spinner'
 import { ThemeToggle } from '../components/ui/ThemeToggle'
 import { useProfile } from '../hooks/useProfile'
 import { AUTH_BYPASS } from '../lib/authBypass'
 import { consumeAuthNotice } from '../lib/format'
 import { errorMessage } from '../lib/validators'
+import { useState, type FormEvent } from 'react'
+import { Input } from '../components/ui/Input'
 
 export function LoginPage() {
+  const navigate = useNavigate()
   const { profile, loading } = useProfile()
-  const { login } = useAuth()
+  const { login, enterAsRole } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(() => consumeAuthNotice())
   const [submitting, setSubmitting] = useState(false)
 
-  if (AUTH_BYPASS) return <Navigate to="/dashboard" replace />
   if (loading) return <FullPageSpinner />
+
+  if (AUTH_BYPASS) {
+    if (profile?.role === 'admin') return <Navigate to="/dashboard" replace />
+    if (profile?.role === 'collaboratore') return <Navigate to="/le-mie-aziende" replace />
+
+    return (
+      <div className="login-shell flex min-h-screen flex-col items-center justify-center px-4 py-8 pb-[max(2rem,env(safe-area-inset-bottom))] pt-[max(2rem,env(safe-area-inset-top))]">
+        <div className="absolute right-4 top-[max(1rem,env(safe-area-inset-top))] z-10 sm:right-6">
+          <ThemeToggle compact className="min-h-10 w-10 px-0" />
+        </div>
+
+        <div className="page-enter relative z-10 flex w-full max-w-md flex-col items-center">
+          <DevologyLogo hero showWordmark markClassName="h-[4.75rem] w-[4.75rem] sm:h-[5.25rem] sm:w-[5.25rem]" />
+          <p className="mt-3 max-w-sm text-center text-[15px] leading-relaxed text-muted">
+            Anteprima aperta — scegli come entrare (login temporaneamente disattivato).
+          </p>
+
+          <div className="card-surface mt-8 flex w-full flex-col gap-3 p-6 sm:p-8">
+            <h1 className="text-lg font-semibold tracking-tight text-ink">Entra come</h1>
+            <Button
+              className="w-full"
+              onClick={() => {
+                enterAsRole('admin')
+                navigate('/dashboard', { replace: true })
+              }}
+            >
+              Admin
+            </Button>
+            <Button
+              variant="secondary"
+              className="w-full"
+              onClick={() => {
+                enterAsRole('collaboratore')
+                navigate('/le-mie-aziende', { replace: true })
+              }}
+            >
+              Collaboratore
+            </Button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   if (profile) return <Navigate to="/dashboard" replace />
 
   const submit = async (event: FormEvent) => {

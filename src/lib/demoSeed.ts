@@ -192,24 +192,35 @@ let savedSearches: SavedSearch[] = [
   {
     id: 's-1',
     user_id: DEMO_ADMIN_ID,
-    name: 'Lombardia da chiamare',
-    query: '',
+    name: 'Lombardia · impresa edile',
+    country: 'IT',
     region: 'Lombardia',
-    province: null,
-    city: null,
-    status: 'da_chiamare',
+    regions: ['Lombardia'],
+    provinces: [],
+    keywords: ['impresa edile'],
+    max_requests: 100,
+    estimated_queries: 34,
+    estimated_cost_eur: 1.088,
+    actual_requests: 34,
+    results_count: 12,
+    added_count: 5,
+    auto_add_to_companies: true,
+    import_batch_id: 'batch-1',
+    summary: {
+      comuni_done: 10,
+      comuni_total: 10,
+      found: 12,
+      inserted: 5,
+      duplicates_safe: 4,
+      duplicates_doubtful: 1,
+      without_phone: 2,
+      requests: 34,
+      estimated_cost_eur: 1.088,
+    },
+    status: 'completed',
+    error_message: null,
     created_at: daysAgo(7),
-  },
-  {
-    id: 's-2',
-    user_id: DEMO_ADMIN_ID,
-    name: 'Pool libero',
-    query: '',
-    region: null,
-    province: null,
-    city: null,
-    status: 'da_chiamare',
-    created_at: daysAgo(2),
+    completed_at: daysAgo(7),
   },
 ]
 
@@ -256,10 +267,6 @@ const collaboratorsBase: Collaborator[] = [
 
 export function isDemoMode(): boolean {
   return AUTH_BYPASS
-}
-
-function uniqueSorted(values: string[]): string[] {
-  return [...new Set(values.map((v) => v.trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'it'))
 }
 
 function enrichCollaborators(): Collaborator[] {
@@ -339,17 +346,10 @@ export function demoGetSavedSearches(): SavedSearch[] {
 
 export function demoGetSearchGeo(params?: { region?: string; province?: string }): SearchGeoOptions {
   const region = params?.region && params.region !== 'all' ? params.region : null
-  const province = params?.province && params.province !== 'all' ? params.province : null
   return {
-    regions: uniqueSorted(companies.map((c) => c.region)),
-    provinces: uniqueSorted(
-      companies.filter((c) => !region || c.region === region).map((c) => c.province),
-    ),
-    cities: uniqueSorted(
-      companies
-        .filter((c) => (!region || c.region === region) && (!province || c.province === province))
-        .map((c) => c.city),
-    ),
+    countries: ['IT'],
+    regions: ['Lombardia'],
+    provinces: region === 'Lombardia' || !region ? ['MI', 'CO'] : [],
   }
 }
 
@@ -383,6 +383,14 @@ export function demoGetCallQueue(
   }
   const page = rows.slice(offset, offset + limit)
   const geo = demoGetSearchGeo({ region: params?.region, province: params?.province })
+  const cities = [
+    ...new Set(
+      rows
+        .filter((c) => (!params?.region || c.region === params.region) && (!params?.province || c.province === params.province))
+        .map((c) => c.city)
+        .filter(Boolean),
+    ),
+  ].sort((a, b) => a.localeCompare(b, 'it'))
   return {
     companies: page,
     logs: callLogs.filter((l) => page.some((c) => c.id === l.company_id)),
@@ -390,7 +398,7 @@ export function demoGetCallQueue(
     counts,
     regions: geo.regions,
     provinces: geo.provinces,
-    cities: geo.cities,
+    cities,
   }
 }
 

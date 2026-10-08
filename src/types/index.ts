@@ -165,32 +165,219 @@ export type CompanyFilter = {
   assigneeId?: string
 }
 
-export type SavedSearch = {
+export const SEARCH_STATUSES = [
+  'draft',
+  'queued',
+  'running',
+  'completed',
+  'partial_error',
+  'failed',
+  'cancelled',
+  'paused',
+  'paused_limit',
+] as const
+
+export type SearchStatus = (typeof SEARCH_STATUSES)[number]
+
+export type SearchCoverage = {
+  comuni_total: number
+  comuni_done: number
+  cells_total: number
+  cells_done: number
+  cells_pending: number
+  cells_saturo: number
+  cells_manual_review: number
+  cells_error: number
+  uncovered_comuni: Array<{
+    comune_id: string
+    name: string
+    province: string
+    population: number | null
+    pending_cells: number
+  }>
+}
+
+export type BatchSummary = {
+  comuni_done: number
+  comuni_total: number
+  found: number
+  inserted: number
+  duplicates_safe: number
+  duplicates_doubtful: number
+  without_phone: number
+  requests: number
+  estimated_cost_eur: number
+}
+
+export type PlacesSearch = {
   id: string
   user_id: string
   name: string
-  query: string
+  country: string
   region: string | null
-  province: string | null
-  city: string | null
-  status: CompanyStatus | null
+  regions: string[]
+  provinces: string[]
+  keywords: string[]
+  max_requests: number
+  estimated_queries: number
+  estimated_cost_eur: number
+  actual_requests: number
+  results_count: number
+  added_count: number
+  auto_add_to_companies: boolean
+  import_batch_id: string | null
+  summary: BatchSummary | null
+  status: SearchStatus
+  error_message: string | null
+  created_at: string
+  completed_at: string | null
+}
+
+export type PlacesSearchDraft = {
+  country: string
+  regions: string[]
+  provinces?: string[]
+  keywords: string[]
+  max_requests: number
+  estimated_queries: number
+  estimated_cost_eur: number
+  auto_add: boolean
+  name?: string
+}
+
+export type ImportBatch = {
+  id: string
+  search_id: string | null
+  country: string
+  regions: string[]
+  keywords: string[]
+  auto_add: boolean
+  status: 'active' | 'completed' | 'cancelled' | 'partial_cancel'
+  comuni_total: number
+  comuni_done: number
+  found_count: number
+  inserted_count: number
+  duplicates_safe: number
+  duplicates_doubtful: number
+  without_phone: number
+  requests_count: number
+  estimated_cost_eur: number
+  cancel_deleted: number
+  cancel_kept: number
+  created_at: string
+  completed_at: string | null
+}
+
+export type CancelBatchResult = {
+  deleted: number
+  kept: number
+  kept_assigned: number
+  kept_called: number
+}
+
+export type PlacesEstimate = {
+  comuni: number
+  keywords: number
+  queries: number
+  estimated_cost_eur: number
+  cost_per_request_eur: number
+}
+
+export type SearchJob = {
+  id: string
+  search_id: string
+  status: SearchStatus
+  total_queries: number
+  completed_queries: number
+  cursor_offset: number
+  batch_size: number
+  request_count: number
+  saturated_cells: number
+  pending_cells: number
+  comuni_total: number
+  comuni_done: number
+  pause_summary: string | null
+  error_message: string | null
+  updated_at: string
+}
+
+export type SearchResultRow = {
+  id: string
+  search_id: string
+  google_place_id: string | null
+  name: string
+  phone: string
+  phone_normalized: string
+  website: string
+  address: string | null
+  city: string
+  province: string
+  region: string
+  country: string
+  business_status: string | null
+  is_duplicate_in_db: boolean
+  is_duplicate_in_search: boolean
+  possible_duplicate: boolean
+  similar_company_id: string | null
+  discarded: boolean
+  added_company_id: string | null
+  auto_added: boolean
+  fetched_at: string
   created_at: string
 }
 
-export type SavedSearchDraft = {
-  name: string
-  query: string
-  region: string | null
-  province: string | null
-  city: string | null
-  status: CompanyStatus | null
+export type AddSearchResultsResult = {
+  inserted: number
+  duplicates: number
+  doubtful: number
+  skipped: number
+  without_phone: number
 }
+
+export type SearchProcessResponse = {
+  ok?: boolean
+  search_id?: string
+  job_status?: string
+  completed_queries?: number
+  total_queries?: number
+  request_count?: number
+  results_count?: number
+  comuni_done?: number
+  comuni_total?: number
+  cells_pending?: number
+  cells_saturo?: number
+  done?: boolean
+  paused?: boolean
+  error?: string
+  summary?: BatchSummary
+}
+
+/** @deprecated filtri salvati — sostituito da PlacesSearch */
+export type SavedSearch = PlacesSearch
+export type SavedSearchDraft = PlacesSearchDraft
 
 export type SearchGeoOptions = {
   regions: string[]
   provinces: string[]
-  cities: string[]
+  countries: string[]
 }
+
+export const KEYWORD_PRESETS = [
+  'impresa edile',
+  'ditta edile',
+  'costruzioni',
+  'ristrutturazioni',
+  'carpenteria',
+] as const
+
+export const SEARCH_COUNTRIES = [
+  { code: 'IT', label: 'Italia' },
+  { code: 'CH', label: 'Svizzera' },
+  { code: 'FR', label: 'Francia' },
+  { code: 'DE', label: 'Germania' },
+  { code: 'AT', label: 'Austria' },
+  { code: 'ES', label: 'Spagna' },
+] as const
 
 export type CompanyListParams = {
   search?: string

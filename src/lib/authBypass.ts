@@ -10,3 +10,13 @@ export const BYPASS_PROFILE = {
   daily_goal: 20,
   created_at: new Date(0).toISOString(),
 }
+
+export const BYPASS_COLLABORATOR = {
+  id: '00000000-0000-4000-8000-000000000002',
+  full_name: 'Collaboratore Demo',
+  email: 'collaboratore@demo.local',
+  role: 'collaboratore' as const,
+  active: true,
+  daily_goal: 20,
+  created_at: new Date(0).toISOString(),
+}
