@@ -1,5 +1,5 @@
-/** Imposta a `false` per riattivare il login. */
-export const AUTH_BYPASS = true
+/** Imposta a `true` solo per anteprima UI senza sessione (i dati Supabase non caricano). */
+export const AUTH_BYPASS = false
 
 export const BYPASS_PROFILE = {
   id: '00000000-0000-4000-8000-000000000001',

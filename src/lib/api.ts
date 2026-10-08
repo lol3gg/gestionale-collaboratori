@@ -673,17 +673,11 @@ export async function setCollaboratorActive(userId: string, active: boolean, act
   await invokeAdminUsers({ action: 'set_active', user_id: userId, active })
 }
 
-export async function getDashboardStats(viewer: DashboardViewer): Promise<DashboardStats> {
-  void viewer
-  const { data, error } = await db().rpc('dashboard_stats')
-  throwQuery(error)
-  if (!isRecord(data)) throw new Error('Statistiche non valide')
-
+function parseDashboardPayload(data: Record<string, unknown>): DashboardStats {
   const byStatusRaw = Array.isArray(data.byStatus) ? data.byStatus : []
   const rankingRaw = Array.isArray(data.ranking) ? data.ranking : []
   const overdueRaw = Array.isArray(data.callbacksOverdue) ? data.callbacksOverdue : []
   const todayRaw = Array.isArray(data.callbacksToday) ? data.callbacksToday : []
-
   const asRecord = (value: unknown): Record<string, unknown> | null => (isRecord(value) ? value : null)
 
   return {
@@ -737,4 +731,108 @@ export async function getDashboardStats(viewer: DashboardViewer): Promise<Dashbo
       })),
     callbacksDueCount: typeof data.callbacksDueCount === 'number' ? data.callbacksDueCount : 0,
   }
+}
+
+async function getDashboardStatsFallback(viewer: DashboardViewer): Promise<DashboardStats> {
+  let companiesQuery = db()
+    .from('companies')
+    .select('id, name, phone, status, assigned_to, callback_at')
+  if (viewer.role !== 'admin') {
+    companiesQuery = companiesQuery.eq('assigned_to', viewer.id)
+  }
+  const { data: companies, error: companiesError } = await companiesQuery
+  throwQuery(companiesError)
+
+  const rows = companies ?? []
+  const statuses: CompanyStatus[] = [
+    'da_chiamare',
+    'non_risponde',
+    'da_richiamare',
+    'accettato',
+    'rifiutato',
+    'numero_errato',
+  ]
+  const now = new Date()
+  const startOfDay = new Date(now)
+  startOfDay.setHours(0, 0, 0, 0)
+  const endOfDay = new Date(startOfDay)
+  endOfDay.setDate(endOfDay.getDate() + 1)
+  const startOfWeek = new Date(startOfDay)
+  const day = (startOfWeek.getDay() + 6) % 7
+  startOfWeek.setDate(startOfWeek.getDate() - day)
+
+  const callbacksOverdue = rows
+    .filter(
+      (c) =>
+        c.status === 'da_richiamare' &&
+        typeof c.callback_at === 'string' &&
+        new Date(c.callback_at) < startOfDay,
+    )
+    .map((c) => ({
+      id: c.id,
+      name: c.name,
+      callback_at: c.callback_at as string,
+      phone: c.phone || undefined,
+    }))
+  const callbacksToday = rows
+    .filter((c) => {
+      if (c.status !== 'da_richiamare' || typeof c.callback_at !== 'string') return false
+      const at = new Date(c.callback_at)
+      return at >= startOfDay && at < endOfDay
+    })
+    .map((c) => ({
+      id: c.id,
+      name: c.name,
+      callback_at: c.callback_at as string,
+      phone: c.phone || undefined,
+    }))
+
+  let logsQuery = db().from('call_logs').select('outcome, created_at, user_id').gte('created_at', startOfWeek.toISOString())
+  if (viewer.role !== 'admin') logsQuery = logsQuery.eq('user_id', viewer.id)
+  const { data: logs, error: logsError } = await logsQuery
+  throwQuery(logsError)
+
+  const callRows = logs ?? []
+  const callsToday = callRows.filter((l) => new Date(l.created_at) >= startOfDay).length
+  const acceptedToday = callRows.filter(
+    (l) => l.outcome === 'accettato' && new Date(l.created_at) >= startOfDay,
+  ).length
+  const rejectedToday = callRows.filter(
+    (l) => l.outcome === 'rifiutato' && new Date(l.created_at) >= startOfDay,
+  ).length
+
+  let dailyGoal = 30
+  const { data: profile } = await db().from('profiles').select('*').eq('id', viewer.id).maybeSingle()
+  if (profile && typeof (profile as { daily_goal?: unknown }).daily_goal === 'number') {
+    dailyGoal = (profile as { daily_goal: number }).daily_goal
+  }
+  const claimedCount = rows.filter((c) => c.assigned_to === viewer.id).length
+
+  return {
+    total: rows.length,
+    assigned: rows.filter((c) => c.assigned_to).length,
+    byStatus: statuses.map((status) => ({
+      status,
+      count: rows.filter((c) => c.status === status).length,
+    })),
+    callsToday,
+    callsThisWeek: callRows.length,
+    acceptedToday,
+    rejectedToday,
+    acceptanceRate30d: null,
+    dailyGoal,
+    claimedCount,
+    claimLimit: CLAIM_LIMIT,
+    ranking: [],
+    callbacksOverdue,
+    callbacksToday,
+    callbacksDueCount: callbacksOverdue.length + callbacksToday.length,
+  }
+}
+
+export async function getDashboardStats(viewer: DashboardViewer): Promise<DashboardStats> {
+  const { data, error } = await db().rpc('dashboard_stats')
+  if (!error && isRecord(data)) return parseDashboardPayload(data)
+  // RPC assente o non aggiornata sul progetto → fallback client
+  return getDashboardStatsFallback(viewer)
 }
