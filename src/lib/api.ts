@@ -1,6 +1,24 @@
 import { invokeAdminUsers } from './adminUsers'
 import { AUTH_BYPASS } from './authBypass'
 import type { CallTab } from './calls'
+import {
+  demoAssignCompany,
+  demoClaimCompany,
+  demoCreateSavedSearch,
+  demoDeleteSavedSearch,
+  demoGetCallLogs,
+  demoGetCallQueue,
+  demoGetCollaborators,
+  demoGetCompanies,
+  demoGetDashboardStats,
+  demoGetSavedSearches,
+  demoGetSearchGeo,
+  demoRecordCall,
+  demoReleaseCompany,
+  demoSetStatus,
+  demoUpdateSavedSearch,
+  isDemoMode,
+} from './demoSeed'
 import { isRecord } from './guards'
 import { mapCallLog, mapCompany, mapCompanyFromUnknown, type DbCompanyRow } from './mapCompany'
 import { getSupabase } from './supabase'
@@ -216,6 +234,7 @@ async function loadCompany(id: string): Promise<Company> {
 }
 
 export async function getCompanies(filter?: CompanyListParams | { assigneeId?: string }): Promise<CompanyListResult> {
+  if (isDemoMode()) return demoGetCompanies(filter)
   const params: CompanyListParams = { ...(filter ?? {}) }
   const paginated = typeof params.page === 'number' && typeof params.pageSize === 'number'
 
@@ -286,6 +305,7 @@ export async function updateCompany(id: string, details: CompanyDetails, actor: 
 }
 
 export async function setCompanyStatus(id: string, status: CompanyStatus, actor: Actor): Promise<Company> {
+  if (isDemoMode()) return demoSetStatus(id, status)
   void actor
   const patch: { status: CompanyStatus; callback_at?: null } = { status }
   if (status !== 'da_richiamare') patch.callback_at = null
@@ -300,6 +320,7 @@ export async function setCompanyStatus(id: string, status: CompanyStatus, actor:
 }
 
 export async function assignCompany(id: string, assigneeId: string | null, actor: Actor): Promise<Company> {
+  if (isDemoMode()) return demoAssignCompany(id, assigneeId)
   void actor
   const { data, error } = await db()
     .from('companies')
@@ -390,6 +411,17 @@ export type CallQueueParams = {
 }
 
 export async function getCallQueue(actor: Actor, params?: CallQueueParams): Promise<CallQueue> {
+  if (isDemoMode()) {
+    return demoGetCallQueue(actor.id, {
+      tab: params?.tab,
+      query: params?.query,
+      region: params?.region,
+      province: params?.province,
+      city: params?.city,
+      offset: params?.offset,
+      limit: params?.limit,
+    })
+  }
   const tab = params?.tab ?? 'da_chiamare'
   const offset = params?.offset ?? 0
   const limit = params?.limit ?? 25
@@ -490,6 +522,7 @@ function uniqueSorted(values: string[]): string[] {
 
 export async function getCallLogs(companyId: string, actor: Actor): Promise<CallLog[]> {
   void actor
+  if (isDemoMode()) return demoGetCallLogs(companyId)
   return fetchLogsForCompanies([companyId])
 }
 
@@ -497,7 +530,9 @@ export async function recordCallOutcome(
   input: CallOutcomeInput,
   actor: Actor,
 ): Promise<{ company: Company; log: CallLog }> {
-  void actor
+  if (isDemoMode()) {
+    return demoRecordCall(input.companyId, actor.id, input.outcome, input.note, input.callbackAt)
+  }
   const { data, error } = await db().rpc('record_call_outcome', {
     p_company_id: input.companyId,
     p_outcome: input.outcome,
@@ -522,7 +557,7 @@ export async function undoCall(logId: string, actor: Actor): Promise<Company> {
 }
 
 export async function claimCompany(id: string, actor: Actor): Promise<Company> {
-  void actor
+  if (isDemoMode()) return demoClaimCompany(id, actor.id)
   const { data, error } = await db().rpc('claim_company', { p_id: id })
   throwQuery(error)
   const mapped = mapCompanyFromUnknown(data)
@@ -530,7 +565,7 @@ export async function claimCompany(id: string, actor: Actor): Promise<Company> {
 }
 
 export async function releaseCompany(id: string, actor: Actor): Promise<Company> {
-  void actor
+  if (isDemoMode()) return demoReleaseCompany(id, actor.id, actor.role === 'admin')
   const { data, error } = await db().rpc('release_company', { p_id: id })
   throwQuery(error)
   const mapped = mapCompanyFromUnknown(data)
@@ -602,6 +637,7 @@ export async function removeExplanationExtraSlot(id: string, actor: Actor): Prom
 }
 
 export async function getCollaborators(): Promise<Collaborator[]> {
+  if (isDemoMode()) return demoGetCollaborators()
   const { data: profiles, error } = await db()
     .from('profiles')
     .select('id, full_name, email, role, active, daily_goal, created_at')
@@ -908,6 +944,7 @@ async function getDashboardStatsFallback(viewer: DashboardViewer): Promise<Dashb
 }
 
 export async function getDashboardStats(viewer: DashboardViewer): Promise<DashboardStats> {
+  if (isDemoMode()) return demoGetDashboardStats(viewer.id, viewer.role)
   const { data, error } = await db().rpc('dashboard_stats')
   if (!error && isRecord(data)) return parseDashboardPayload(data)
   // RPC assente o non aggiornata sul progetto → fallback client
@@ -953,6 +990,7 @@ export function savedSearchToListParams(search: Pick<SavedSearch, 'query' | 'reg
 }
 
 export async function getSavedSearches(): Promise<SavedSearch[]> {
+  if (isDemoMode()) return demoGetSavedSearches()
   const { data, error } = await db()
     .from('searches')
     .select('id, user_id, name, query, region, province, city, status, created_at')
@@ -963,6 +1001,17 @@ export async function getSavedSearches(): Promise<SavedSearch[]> {
 }
 
 export async function createSavedSearch(draft: SavedSearchDraft, actor: Actor): Promise<SavedSearch> {
+  if (isDemoMode()) {
+    return demoCreateSavedSearch({
+      user_id: actor.id,
+      name: draft.name.trim(),
+      query: draft.query.trim(),
+      region: draft.region,
+      province: draft.province,
+      city: draft.city,
+      status: draft.status,
+    })
+  }
   const { data, error } = await db()
     .from('searches')
     .insert({
@@ -981,6 +1030,16 @@ export async function createSavedSearch(draft: SavedSearchDraft, actor: Actor): 
 }
 
 export async function updateSavedSearch(id: string, draft: SavedSearchDraft): Promise<SavedSearch> {
+  if (isDemoMode()) {
+    return demoUpdateSavedSearch(id, {
+      name: draft.name.trim(),
+      query: draft.query.trim(),
+      region: draft.region,
+      province: draft.province,
+      city: draft.city,
+      status: draft.status,
+    })
+  }
   const { data, error } = await db()
     .from('searches')
     .update({
@@ -999,6 +1058,10 @@ export async function updateSavedSearch(id: string, draft: SavedSearchDraft): Pr
 }
 
 export async function deleteSavedSearch(id: string): Promise<void> {
+  if (isDemoMode()) {
+    demoDeleteSavedSearch(id)
+    return
+  }
   const { error } = await db().from('searches').delete().eq('id', id)
   throwQuery(error)
 }
@@ -1007,6 +1070,7 @@ export async function getSearchGeoOptions(params?: {
   region?: string
   province?: string
 }): Promise<SearchGeoOptions> {
+  if (isDemoMode()) return demoGetSearchGeo(params)
   const { data, error } = await db().from('companies').select('region, province, city')
   if (allowEmptyOnBypass(error)) return { regions: [], provinces: [], cities: [] }
   throwQuery(error)
