@@ -11,31 +11,31 @@
   "lang": "it",
   "icons": [
     {
-      "src": "/devology-app.png",
+      "src": "/devology-app.png?v=2",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/devology-app.png",
+      "src": "/devology-app.png?v=2",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
     },
     {
-      "src": "/icon-tmp/icon-256.png",
+      "src": "/icon-tmp/icon-256.png?v=2",
       "sizes": "256x256",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icon-tmp/icon-128.png",
+      "src": "/icon-tmp/icon-128.png?v=2",
       "sizes": "128x128",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/favicon.svg",
+      "src": "/favicon.svg?v=2",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any"
