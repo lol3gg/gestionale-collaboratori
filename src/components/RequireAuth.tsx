@@ -1,6 +1,7 @@
 import { Navigate, Outlet } from 'react-router-dom'
 import { useAuth } from '../auth/AuthProvider'
 import { useProfile } from '../hooks/useProfile'
+import { AUTH_BYPASS } from '../lib/authBypass'
 import { Button } from './ui/Button'
 import { FullPageSpinner } from './ui/Spinner'
 
@@ -8,6 +9,7 @@ export function RequireAuth() {
   const { profile, loading, error } = useProfile()
   const { logout } = useAuth()
 
+  if (AUTH_BYPASS) return <Outlet />
   if (loading) return <FullPageSpinner />
   if (!profile && error) {
     return (

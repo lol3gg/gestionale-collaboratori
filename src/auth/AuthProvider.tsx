@@ -9,6 +9,7 @@ import {
 } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { useQueryClient } from '@tanstack/react-query'
+import { AUTH_BYPASS, BYPASS_PROFILE } from '../lib/authBypass'
 import { parseProfile } from '../lib/guards'
 import { rememberAuthNotice } from '../lib/format'
 import { getSupabase, isSupabaseConfigured } from '../lib/supabase'
@@ -39,18 +40,22 @@ async function fetchProfile(userId: string): Promise<Profile | null> {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient()
   const [session, setSession] = useState<Session | null>(null)
-  const [profile, setProfile] = useState<Profile | null>(null)
+  const [profile, setProfile] = useState<Profile | null>(AUTH_BYPASS ? BYPASS_PROFILE : null)
   const [loading, setLoading] = useState(isSupabaseConfigured)
 
   const applySession = useCallback(async (next: Session | null) => {
     setSession(next)
     if (!next?.user) {
-      setProfile(null)
+      setProfile(AUTH_BYPASS ? BYPASS_PROFILE : null)
       return
     }
     try {
       const loaded = await fetchProfile(next.user.id)
       if (!loaded) {
+        if (AUTH_BYPASS) {
+          setProfile(BYPASS_PROFILE)
+          return
+        }
         rememberAuthNotice('Profilo non trovato. Contatta un amministratore.')
         await getSupabase().auth.signOut()
         setSession(null)
@@ -58,6 +63,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return
       }
       if (!loaded.active) {
+        if (AUTH_BYPASS) {
+          setProfile(BYPASS_PROFILE)
+          return
+        }
         rememberAuthNotice('Account disattivato. Contatta un amministratore.')
         await getSupabase().auth.signOut()
         setSession(null)
@@ -66,6 +75,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       setProfile(loaded)
     } catch {
+      if (AUTH_BYPASS) {
+        setProfile(BYPASS_PROFILE)
+        return
+      }
       rememberAuthNotice('Impossibile caricare il profilo. Riprova.')
       await getSupabase().auth.signOut()
       setSession(null)
@@ -83,9 +96,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     void (async () => {
       const { data } = await getSupabase().auth.getSession()
       if (!active) return
-      await applySession(data.session)
+      if (data.session) await applySession(data.session)
+      else if (AUTH_BYPASS) setProfile(BYPASS_PROFILE)
+      else await applySession(null)
       if (active) setLoading(false)
     })()
+
+    if (AUTH_BYPASS) {
+      return () => {
+        active = false
+      }
+    }
 
     const { data: sub } = getSupabase().auth.onAuthStateChange((_event, next) => {
       void applySession(next).finally(() => {
@@ -100,6 +121,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [applySession])
 
   const login = useCallback(async (email: string, password: string) => {
+    if (AUTH_BYPASS) return
     const { error } = await getSupabase().auth.signInWithPassword({
       email: email.trim().toLowerCase(),
       password,
@@ -108,6 +130,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const logout = useCallback(async () => {
+    if (AUTH_BYPASS) return
     if (isSupabaseConfigured) await getSupabase().auth.signOut()
     setSession(null)
     setProfile(null)
@@ -115,6 +138,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [queryClient])
 
   const refreshProfile = useCallback(async () => {
+    if (AUTH_BYPASS) {
+      setProfile(BYPASS_PROFILE)
+      return
+    }
     if (!session?.user) {
       setProfile(null)
       return

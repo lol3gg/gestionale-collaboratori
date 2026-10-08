@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '../../auth/AuthProvider'
 import { useProfile } from '../../hooks/useProfile'
+import { AUTH_BYPASS } from '../../lib/authBypass'
 import { roleLabel } from '../../lib/labels'
 import { Badge } from '../ui/Badge'
 import { Button } from '../ui/Button'
@@ -84,13 +85,15 @@ export function Header() {
                   >
                     Profilo
                   </button>
-                  <button
-                    type="button"
-                    className="flex min-h-11 w-full items-center px-3 text-left text-[15px] text-ink hover:bg-canvas"
-                    onClick={signOut}
-                  >
-                    Esci
-                  </button>
+                  {!AUTH_BYPASS ? (
+                    <button
+                      type="button"
+                      className="flex min-h-11 w-full items-center px-3 text-left text-[15px] text-ink hover:bg-canvas"
+                      onClick={signOut}
+                    >
+                      Esci
+                    </button>
+                  ) : null}
                 </div>
               ) : null}
             </div>
@@ -111,9 +114,11 @@ export function Header() {
               </span>
             </button>
             <Badge variant={profile.role === 'admin' ? 'info' : 'neutral'}>{roleLabel(profile.role)}</Badge>
-            <Button variant="secondary" className="shrink-0" onClick={signOut}>
-              Esci
-            </Button>
+            {!AUTH_BYPASS ? (
+              <Button variant="secondary" className="shrink-0" onClick={signOut}>
+                Esci
+              </Button>
+            ) : null}
           </div>
         </div>
       </header>

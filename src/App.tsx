@@ -4,6 +4,7 @@ import { RequireAuth } from './components/RequireAuth'
 import { RequireRole } from './components/RequireRole'
 import { FullPageSpinner } from './components/ui/Spinner'
 import { useProfile } from './hooks/useProfile'
+import { AUTH_BYPASS } from './lib/authBypass'
 import { isSupabaseConfigured } from './lib/supabase'
 import { AziendePage } from './pages/AziendePage'
 import { CalendarioPage } from './pages/CalendarioPage'
@@ -17,6 +18,7 @@ import { SetupPage } from './pages/SetupPage'
 
 function AdminOnlyChiamate() {
   const { profile, loading } = useProfile()
+  if (AUTH_BYPASS) return <ChiamatePage />
   if (loading) return <FullPageSpinner />
   if (!profile) return <Navigate to="/login" replace />
   if (profile.role !== 'admin') return <Navigate to="/le-mie-aziende" replace />
